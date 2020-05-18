@@ -1,4 +1,3 @@
-
 import numpy as np
 import time
 
@@ -108,7 +107,6 @@ class GraphFFNN:
 
     def __str__(self):
         return str(self._num_neurons)
-
 
 
 if __name__ == '__main__':
