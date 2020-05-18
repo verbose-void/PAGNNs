@@ -1,5 +1,6 @@
 
 import numpy as np
+import time
 
 
 class GraphFFNN:
@@ -7,6 +8,7 @@ class GraphFFNN:
     def __init__(self, input_dim, hidden_units, output_dim, use_bias=True):
         self.input_dim = input_dim
         self.output_dim = output_dim
+        self.hidden_units = hidden_units
 
         # Define the weights and biases in the normal neural network domain.
         self.W = []
@@ -78,10 +80,9 @@ class GraphFFNN:
             state = np.pad(state, (0, self._num_neurons-D))
             state = self.graph_weights * np.transpose([state])
 
-            state = self.graph_step(state)
-            state = self.graph_step(state)
-            state = self.graph_step(state)
-            state = self.graph_step(state)
+            for _ in range(len(self.hidden_units)+1):
+                state = self.graph_step(state)
+            
             # extract the output neurons after the steps
             Y = np.expand_dims(self.extract_output(state), axis=0)
 
@@ -114,7 +115,7 @@ if __name__ == '__main__':
     input_features = 3
     output_features = 2
 
-    gnn = GraphFFNN(input_features, (3, 5, 3), output_features, use_bias=False)
+    gnn = GraphFFNN(input_features, (3, 5, 5, 3), output_features, use_bias=False)
     print('Number of neurons:', gnn._num_neurons)
     
     # create input data
@@ -123,13 +124,23 @@ if __name__ == '__main__':
     print()
     
     # test normal neural network domain inference
+    start = time.time()
     y = gnn.forward(X, mode='normal')
+    normal_dt = time.time() - start
     print('Normal output:')
     print(y)
 
+    start = time.time()
     y_graph = gnn.forward(X, mode='graph')
+    graph_dt = time.time() - start
     print('Graph output:')
     print(y_graph)
+
+    print()
+    print('Time Deltas:')
+    print('Normal: %fms' % (normal_dt*1000))
+    print('Graph: %fms' % (graph_dt*1000))
+    print('Graph is %ix slower.' % (graph_dt / normal_dt))
 
     # print()
     # print(gnn.graph_weights)
