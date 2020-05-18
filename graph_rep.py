@@ -16,8 +16,7 @@ class GraphFFNN:
             self._num_neurons += units
             max_magnitude = np.sqrt(prev_units * units)
             
-            # self.W.append(np.random.uniform(low=-max_magnitude, high=max_magnitude, size=(prev_units, units)))
-            self.W.append(np.ones(shape=(prev_units, units))) # only have 1s to validate the graph representation ones TODO: remove this
+            self.W.append(np.random.uniform(low=-max_magnitude, high=max_magnitude, size=(prev_units, units)))
             
             if use_bias:
                 self.B.append(np.random.uniform(low=-max_magnitude, high=max_magnitude, size=(units, )))
@@ -51,7 +50,7 @@ class GraphFFNN:
         neuron_idx = 0
         for W, B in zip(self.W, self.B):
             N, D = W.shape
-            self.graph_weights[neuron_idx:neuron_idx+N, neuron_idx+N:neuron_idx+D+N] = 1
+            self.graph_weights[neuron_idx:neuron_idx+N, neuron_idx+N:neuron_idx+D+N] = W
             neuron_idx += N
 
         # set last neurons to be connected to themselves (for now) TODO: change this, doesn't make sense for general application
