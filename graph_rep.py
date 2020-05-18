@@ -6,6 +6,7 @@ class GraphFFNN:
 
     def __init__(self, input_dim, hidden_units, output_dim, use_bias=True):
         self.input_dim = input_dim
+        self.output_dim = output_dim
 
         # Define the weights and biases in the normal neural network domain.
         self.W = []
@@ -81,7 +82,8 @@ class GraphFFNN:
             state = self.graph_step(state)
             state = self.graph_step(state)
             state = self.graph_step(state)
-            Y = state
+            # extract the output neurons after the steps
+            Y = np.expand_dims(self.extract_output(state), axis=0)
 
         return Y
 
@@ -93,7 +95,15 @@ class GraphFFNN:
         for i, neuron in enumerate(latent_graph_state):
             next_state += self.graph_weights * np.transpose([neuron])
             
-        return next_state 
+        return next_state
+
+    def extract_output(self, latent_graph_state):
+        Y = np.zeros(self.output_dim)
+        c = 0
+        for i in range(self.output_dim, 0, -1):
+            Y[c] = latent_graph_state[-i, -i]
+            c += 1
+        return Y 
 
     def __str__(self):
         return str(self._num_neurons)
@@ -101,12 +111,14 @@ class GraphFFNN:
 
 
 if __name__ == '__main__':
-    x_features = 2
-    gnn = GraphFFNN(x_features, (3, 5, 3), 1, use_bias=False)
+    input_features = 3
+    output_features = 2
+
+    gnn = GraphFFNN(input_features, (3, 5, 3), output_features, use_bias=False)
     print('Number of neurons:', gnn._num_neurons)
     
     # create input data
-    X = np.random.randint(1000, size=(1, x_features))
+    X = np.random.randint(1000, size=(1, input_features))
     print('X:', X)
     print()
     
