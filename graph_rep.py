@@ -4,7 +4,7 @@ import numpy as np
 
 class GraphFFNN:
 
-    def __init__(self, input_dim, hidden_units, output_dim):
+    def __init__(self, input_dim, hidden_units, output_dim, use_bias=True):
         self.input_dim = input_dim
 
         # Define the weights and biases in the normal neural network domain.
@@ -16,8 +16,13 @@ class GraphFFNN:
             self._num_neurons += units
             max_magnitude = np.sqrt(prev_units * units)
             
-            self.W.append(np.random.uniform(low=-max_magnitude, high=max_magnitude, size=(prev_units, units)))
-            self.B.append(np.random.uniform(low=-max_magnitude, high=max_magnitude, size=(units, )))
+            # self.W.append(np.random.uniform(low=-max_magnitude, high=max_magnitude, size=(prev_units, units)))
+            self.W.append(np.ones(shape=(prev_units, units))) # only have 1s to validate the graph representation ones TODO: remove this
+            
+            if use_bias:
+                self.B.append(np.random.uniform(low=-max_magnitude, high=max_magnitude, size=(units, )))
+            else:
+                self.B.append(np.zeros(shape=(units,)))
 
             prev_units = units
 
@@ -49,6 +54,10 @@ class GraphFFNN:
             self.graph_weights[neuron_idx:neuron_idx+N, neuron_idx+N:neuron_idx+D+N] = 1
             neuron_idx += N
 
+        # set last neurons to be connected to themselves (for now) TODO: change this, doesn't make sense for general application
+        for i in range(output_dim):
+            self.graph_weights[-(i+1), -(i+1)] = 1
+
     def forward(self, X, mode='normal'):
         if mode not in ('normal', 'graph'):
             raise Exception('Forward mode must be normal or graph.')
@@ -63,9 +72,29 @@ class GraphFFNN:
             Y = Z.T
 
         elif mode == 'graph':
-            pass
+            # TODO: handle batch later
+            state = X[0]
+            D = len(state)
+            state = np.pad(state, (0, self._num_neurons-D))
+            state = self.graph_weights * np.transpose([state])
+
+            state = self.graph_step(state)
+            state = self.graph_step(state)
+            state = self.graph_step(state)
+            state = self.graph_step(state)
+            Y = state
 
         return Y
+
+    def graph_step(self, latent_graph_state):
+        # TODO: make more efficient, for now we're traversing the graph nodes to their next edges
+        
+        next_state = np.zeros(latent_graph_state.shape)
+
+        for i, neuron in enumerate(latent_graph_state):
+            next_state += self.graph_weights * np.transpose([neuron])
+            
+        return next_state 
 
     def __str__(self):
         return str(self._num_neurons)
@@ -73,12 +102,24 @@ class GraphFFNN:
 
 
 if __name__ == '__main__':
-    gnn = GraphFFNN(1, (3, 5, 3), 1)
+    x_features = 2
+    gnn = GraphFFNN(x_features, (3, 5, 3), 1, use_bias=False)
     print('Number of neurons:', gnn._num_neurons)
     
+    # create input data
+    X = np.random.randint(1000, size=(1, x_features))
+    print('X:', X)
+    print()
+    
     # test normal neural network domain inference
-    y = gnn.forward(np.random.randint(1000, size=(3, 1)), mode='normal')
+    y = gnn.forward(X, mode='normal')
+    print('Normal output:')
     print(y)
 
-    print()
-    print(gnn.graph_weights)
+    y_graph = gnn.forward(X, mode='graph')
+    print('Graph output:')
+    print(y_graph)
+
+    # print()
+    # print(gnn.graph_weights)
+    # print()
