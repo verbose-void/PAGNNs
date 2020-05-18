@@ -47,7 +47,9 @@ class GraphFFNN:
         neuron_idx = 0
         for W, B in zip(self.W, self.B):
             N, D = W.shape
-            print(N, D)
+            print(neuron_idx)
+            self.graph_weights[neuron_idx:neuron_idx+N, neuron_idx+N:neuron_idx+D+N] = 1
+            neuron_idx += N
 
     def forward(self, X, mode='normal'):
         if mode not in ('normal', 'graph'):
@@ -78,3 +80,6 @@ if __name__ == '__main__':
     # test normal neural network domain inference
     y = gnn.forward(np.random.randint(1000, size=(3, 1)), mode='normal')
     print(y)
+
+    print()
+    print(gnn.graph_weights)
