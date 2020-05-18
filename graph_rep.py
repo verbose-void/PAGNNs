@@ -11,7 +11,7 @@ class GraphFFNN:
         self.W = []
         self.B = []
         prev_units = input_dim
-        self._num_neurons = 0
+        self._num_neurons = input_dim
         for units in list(hidden_units) + [output_dim]:
             self._num_neurons += units
             max_magnitude = np.sqrt(prev_units * units)
@@ -20,7 +20,6 @@ class GraphFFNN:
             self.B.append(np.random.uniform(low=-max_magnitude, high=max_magnitude, size=(units, )))
 
             prev_units = units
-        self._num_neurons += output_dim
 
         # Define the weights in the graph-based neural network domain.
         
@@ -47,7 +46,6 @@ class GraphFFNN:
         neuron_idx = 0
         for W, B in zip(self.W, self.B):
             N, D = W.shape
-            print(neuron_idx)
             self.graph_weights[neuron_idx:neuron_idx+N, neuron_idx+N:neuron_idx+D+N] = 1
             neuron_idx += N
 
@@ -76,6 +74,7 @@ class GraphFFNN:
 
 if __name__ == '__main__':
     gnn = GraphFFNN(1, (3, 5, 3), 1)
+    print('Number of neurons:', gnn._num_neurons)
     
     # test normal neural network domain inference
     y = gnn.forward(np.random.randint(1000, size=(3, 1)), mode='normal')
