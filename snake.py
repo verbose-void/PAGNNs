@@ -32,6 +32,17 @@ class Board:
         self.reward_callback = reward_callback
 
 
+    def get_snake_pos(self):
+        x, y = np.where(self.arr == SNAKE_VALUE)
+        return x[0], y[0]
+    
+
+    def get_apple_pos(self):
+        x, y = np.where(self.arr == APPLE_VALUE)
+        return x[0], y[0]
+
+    
+
     def move_snake(self, direction=None):
         # choose direction
         if self.choose_direction_function is not None:
@@ -44,8 +55,7 @@ class Board:
             raise Exception('Direction %s not found. Valid: %s' % (direction, str(VALID_DIRECTIONS)))
 
         # handle movement
-        x, y = np.where(self.arr == SNAKE_VALUE)
-        x, y = x[0], y[0]
+        x, y = self.get_snake_pos()
         delta = deltas[direction]
 
         nx, ny = x+delta[0], y+delta[1] 
@@ -78,6 +88,15 @@ class Board:
     def draw(self):
         print(self.arr)
         print('Frame: %i Points: %i' % (self.frame, self.apples_eaten))
+
+
+    def get_observation(self):
+        # the observation is the sensors acting agents have access to
+        # for this case, we'll use the delta x & y components for the distance between the agent & the apple 
+        sx, sy = self.get_snake_pos()
+        ax, ay = self.get_apple_pos()
+
+        return ax - sx, ay - sy 
 
     
     def reward(self):
