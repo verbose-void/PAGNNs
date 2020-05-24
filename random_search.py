@@ -88,6 +88,7 @@ class RandomSnakePopulation:
         self._best_hyperparameters = None
         self._best_network_initial_random_state = None
         self._scores = []
+        self._frames = []
        
         self.networks = [None] * self._size
         self.environments = [None] * self._size
@@ -121,6 +122,7 @@ class RandomSnakePopulation:
         # after doing a run, store all current scores
         for env in self.environments:
             self._scores.append(env.apples_eaten)
+            self._frames.append(env.frame)
 
 
     def step_all(self, draw_best=True, check_dead=False):
@@ -154,6 +156,7 @@ class RandomSnakePopulation:
                     self._deaths += 1 
                     # log how many apples they ate before dying
                     self._scores.append(env.apples_eaten)
+                    self._frames.append(env.frame)
 
             # UPDATE RANDOM STATE
             self.current_random_states[i] = np.random.get_state()
@@ -163,15 +166,16 @@ class RandomSnakePopulation:
         return {
             'deaths': self._deaths,
             'best_score_ever': self._best_score_ever,
-            'scores': self._scores
+            'scores': np.array(self._scores, dtype=int),
+            'frames': np.array(self._frames, dtype=int)
         }
 
 
 if __name__ == '__main__':
-    REPLAY = False
+    REPLAY = True
     output_file = 'best.pkl'
     
-    world_size = (10, 10)
+    world_size = (20, 20)
     population_size = 2000
     out_neurons = len(VALID_DIRECTIONS) # number of possible actions 
     in_neurons = 2
@@ -186,7 +190,7 @@ if __name__ == '__main__':
     if not REPLAY:
         population = RandomSnakePopulation(population_size, in_neurons, neurons, out_neurons, weight_retention=weight_retention, \
                                      energy_retention=energy_retention, sparsity_value=sparsity_value, world_size=world_size)
-        population.run(10000, draw_best=False) 
+        population.run(15, draw_best=False) 
         # print(population.metrics())
 
         # get best found network & random state
@@ -225,7 +229,7 @@ if __name__ == '__main__':
     weight_retention = hyperparams['weight_retention']
     energy_retention = hyperparams['energy_retention']
 
-    replay_sleep_length = 0.1
+    replay_sleep_length = 0.05
     while not best_nn.is_dead():
         X = np.asarray([env.get_observation()])
         best_nn.load_input(X)
