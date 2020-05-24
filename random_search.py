@@ -135,7 +135,7 @@ if __name__ == '__main__':
     output_file = 'best.pkl'
     
     world_size = (10, 10)
-    population_size = 100
+    population_size = 1000
     out_neurons = len(VALID_DIRECTIONS) # number of possible actions 
 
     weight_retention = 0.99
@@ -144,7 +144,7 @@ if __name__ == '__main__':
     if not REPLAY:
         population = SnakePopulation(population_size, 2, 10, out_neurons, weight_retention=weight_retention, \
                                      energy_retention=energy_retention, world_size=world_size)
-        population.run(1, draw_best=False) 
+        population.run(1000, draw_best=False) 
         # print(population.metrics())
 
         # get best found network & random state
@@ -158,8 +158,6 @@ if __name__ == '__main__':
             print('Saved best net to %s.' % output_file)
         
         print(population.metrics())
-        print('Playing replay in 5s...')
-        sleep(5)
     else:
         # open network saved in the output_file
         with open(output_file, 'rb') as f:
@@ -168,6 +166,9 @@ if __name__ == '__main__':
             
         population = SnakePopulation(population_size, 2, 10, out_neurons, weight_retention=weight_retention, \
                                      energy_retention=energy_retention, world_size=world_size)
+
+    if input('Watch replay? [y]') != 'y':
+        exit()
 
     # watch replay 
     np.random.set_state(best_nn_initial_random_state)
