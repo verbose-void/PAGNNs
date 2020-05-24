@@ -1,5 +1,6 @@
 import numpy as np
 from time import sleep
+from termcolor import colored
 import os
 
 APPLE_VALUE = 2 
@@ -11,6 +12,10 @@ deltas = {
     'R': np.array([1, 0]),
     'L': np.array([-1, 0])
 }
+
+EMPTY_CHAR = '\u25A0'
+APPLE_CHAR = colored(EMPTY_CHAR, 'red')
+SNAKE_CHAR = colored(EMPTY_CHAR, 'green')
 
 class Board:
     
@@ -84,8 +89,21 @@ class Board:
         self.arr[x, y] = APPLE_VALUE
 
 
-    def draw(self, suffix=''):
-        print(self.arr)
+    def draw(self, suffix='', arr_print=False):
+        if arr_print:
+            print(self.arr)
+        else:
+            for row in self.arr:
+                s = ''
+                for v in row:
+                    if v == 0:
+                        s += EMPTY_CHAR * 2
+                    elif v == SNAKE_VALUE:
+                        s += SNAKE_CHAR * 2
+                    elif v == APPLE_VALUE:
+                        s += APPLE_CHAR * 2
+                print(s)
+        
         print('Frame: %i Points: %i %s' % (self.frame, self.apples_eaten, suffix))
 
 
