@@ -14,28 +14,46 @@ from scipy.special import softmax
 
 APPLE_REWARD = 1.3 # reverse weight_retention application
 
-class SnakePopulation:
+def _get_hyperparam(x, integer=False):
+    if isinstance(x, tuple):
+        if integer:
+            return np.random.randint(x[0], x[1])
+        return np.random.uniform(x[0], x[1])
+    return x
+
+class RandomSnakePopulation:
 
     def __init__(self, size, in_neurons, neurons, out_neurons, world_size=(10, 10), \
-                 weight_retention=0.9, energy_retention=0.9):
-        # TODO: allow random amount of neurons
+                 weight_retention=0.9, energy_retention=0.9, sparsity_value=0.5):
+        """
+        If neurons, weight_retention, or energy_retention are tuples of size 2, treat them as ranges.
+        """
+
         self._size = size
         self._world_size = world_size
         self._in_neurons = in_neurons
         self._neurons = neurons
         self._out_neurons = out_neurons
 
-        # TODO
         self._weight_retention = weight_retention
         self._energy_retention = energy_retention
+        self._sparsity_value = sparsity_value
+
         self._check_death_frequency = 5 # check for network deaths every N steps
 
         self.reset()
 
     
     def reset_network(self, idx, initial_seed=None):
-        nn = GraphNN(self._in_neurons, self._neurons, self._out_neurons) # don't count as part of the initial random state
-        
+        # initialize hyper parameters. don't count as part of the initial random state
+        hyperparams = {
+            'weight_retention': _get_hyperparam(self._weight_retention),
+            'energy_retention': _get_hyperparam(self._energy_retention),
+            'neurons': _get_hyperparam(self._neurons, integer=True),
+            'sparsity_value': _get_hyperparam(self._sparsity_value),
+        }
+        nn = GraphNN(self._in_neurons, hyperparams['neurons'], self._out_neurons, sparsity_value=hyperparams['sparsity_value'])         
+
         # set a random seed and log the state
         np.random.seed(initial_seed)
         random_state = np.random.get_state()
@@ -48,10 +66,12 @@ class SnakePopulation:
         self.environments[idx] = env
         self.initial_random_states[idx] = deepcopy(random_state)
         self.current_random_states[idx] = deepcopy(random_state)
+        self.hyperparams[idx] = hyperparams
 
         if self._best_idx == idx:
             self._best_idx = 0
             self._best_score = float('-inf')
+            self._best_hyperparameters = None
 
 
     def reset(self):
@@ -60,10 +80,13 @@ class SnakePopulation:
         self._deaths = 0
         self._best_score_ever = float('-inf')
         self._best_network_copy = None
+        self._best_hyperparameters = None
         self._best_network_initial_random_state = None
+        self._scores = []
        
         self.networks = [None] * self._size
         self.environments = [None] * self._size
+        self.hyperparams = [None] * self._size
         self.initial_random_states = [None] * self._size
         self.current_random_states = [None] * self._size
 
@@ -90,15 +113,20 @@ class SnakePopulation:
         for step in iterator:
             population.step_all(draw_best=draw_best, check_dead=((step+1) % self._check_death_frequency == 0))
 
+        # after doing a run, store all current scores
+        for env in self.environments:
+            self._scores.append(env.apples_eaten)
+
 
     def step_all(self, draw_best=True, check_dead=False):
-        for i, (nn, env, rstate) in enumerate(zip(self.networks, self.environments, self.current_random_states)):
+        for i, (nn, env, rstate, hyperparams) in enumerate(zip(self.networks, self.environments, self.current_random_states, \
+                                                               self.hyperparams)):
             # BEFORE ANYTHING, SET RANDOM STATE
             np.random.set_state(rstate)
             
             X = np.asarray([env.get_observation()])
             nn.load_input(X)
-            nn.step(self._weight_retention, self._energy_retention)
+            nn.step(hyperparams['weight_retention'], hyperparams['energy_retention'])
 
             if env.apples_eaten > self._best_score:
                 self._best_score = env.apples_eaten
@@ -108,6 +136,7 @@ class SnakePopulation:
                 self._best_score_ever = env.apples_eaten
                 self._best_network_copy = deepcopy(nn)
                 self._best_network_initial_random_state = deepcopy(self.initial_random_states[i])
+                self._best_hyperparameters = deepcopy(self.hyperparams[i])
 
             draw = draw_best and self._best_idx == i
             env.rollout(1, draw=draw, suffix=\
@@ -118,6 +147,8 @@ class SnakePopulation:
                     # network is dead, reinitialize it and it's environment
                     self.reset_network(i)
                     self._deaths += 1 
+                    # log how many apples they ate before dying
+                    self._scores.append(env.apples_eaten)
 
             # UPDATE RANDOM STATE
             self.current_random_states[i] = np.random.get_state()
@@ -126,7 +157,8 @@ class SnakePopulation:
     def metrics(self):
         return {
             'deaths': self._deaths,
-            'best_score_ever': self._best_score_ever
+            'best_score_ever': self._best_score_ever,
+            'scores': self._scores
         }
 
 
@@ -137,13 +169,18 @@ if __name__ == '__main__':
     world_size = (10, 10)
     population_size = 1000
     out_neurons = len(VALID_DIRECTIONS) # number of possible actions 
+    in_neurons = 2
 
-    weight_retention = 0.99
-    energy_retention = 0.99
+    # hyperparameter ranges
+    weight_retention = (0.1, 1)
+    energy_retention = (0.1, 1) 
+    sparsity_value = (0, 0.9)
+    neurons = (in_neurons + out_neurons, 25)
+
 
     if not REPLAY:
-        population = SnakePopulation(population_size, 2, 10, out_neurons, weight_retention=weight_retention, \
-                                     energy_retention=energy_retention, world_size=world_size)
+        population = RandomSnakePopulation(population_size, in_neurons, neurons, out_neurons, weight_retention=weight_retention, \
+                                     energy_retention=energy_retention, sparsity_value=sparsity_value, world_size=world_size)
         population.run(1000, draw_best=False) 
         # print(population.metrics())
 
@@ -154,18 +191,22 @@ if __name__ == '__main__':
 
         # save best network
         with open(output_file, 'wb') as f:
-            pickle.dump((population._best_network_copy, population._best_network_initial_random_state), f)
+            pickle.dump((population._best_network_copy, population._best_network_initial_random_state, \
+                         population._best_hyperparameters, population.metrics()), f)
             print('Saved best net to %s.' % output_file)
         
         print(population.metrics())
+        hyperparams = population._best_hyperparameters
     else:
         # open network saved in the output_file
         with open(output_file, 'rb') as f:
-            best_nn, best_nn_initial_random_state = pickle.load(f)
+            best_nn, best_nn_initial_random_state, hyperparams, metrics = pickle.load(f)
             best_nn.revert_to_initial() 
             
-        population = SnakePopulation(population_size, 2, 10, out_neurons, weight_retention=weight_retention, \
-                                     energy_retention=energy_retention, world_size=world_size)
+        population = RandomSnakePopulation(population_size, in_neurons, hyperparams['neurons'], out_neurons, \
+                                     weight_retention=hyperparams['weight_retention'], \
+                                     energy_retention=hyperparams['energy_retention'], \
+                                     world_size=world_size)
 
     if input('Watch replay? [y]') != 'y':
         exit()
@@ -175,6 +216,9 @@ if __name__ == '__main__':
     env = SnakeEnvironment(world_size, \
             lambda env: population.get_direction_prediction(best_nn), \
             lambda _: best_nn.reward(APPLE_REWARD))
+
+    weight_retention = hyperparams['weight_retention']
+    energy_retention = hyperparams['energy_retention']
 
     replay_sleep_length = 0.1
     while not best_nn.is_dead():
