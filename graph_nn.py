@@ -46,6 +46,14 @@ class GraphNN:
     def reset_latent_state(self):
         self.latent_state = np.zeros((self._neurons, self._neurons), dtype=self._dtype)
 
+    def is_dead(self):
+        """
+        A dead network is defined by a network who's latent state's absolute value sum is < some threhold value (ie. 1e-5).
+        This means that the network will not provide any outputs no matter how many steps you take.
+        """
+
+        return np.sum(np.abs(self.latent_state)) <= 1e-1
+
     def load_input(self, X, steps=1):
         """
         Load the input data "X" into neuron format and store in the network's "latent state". This is NOT a forward pass, it is also not a state step, it simply loads the data into the latent space. 
@@ -102,7 +110,7 @@ if __name__ == '__main__':
         # print(nn.latent_state.astype(np.int32))
         print('step %i output: %s' % (step, str(nn.extract_output())))
 
-        if np.sum(np.abs(nn.latent_state)) <= 1e-1:
+        if nn.is_dead():
             print('Lasted %i steps.' % step)
             break
 
