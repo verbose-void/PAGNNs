@@ -46,13 +46,13 @@ class GraphNN:
     def reset_latent_state(self):
         self.latent_state = np.zeros((self._neurons, self._neurons), dtype=self._dtype)
 
-    def is_dead(self):
+    def is_dead(self, threshold=1e-1):
         """
-        A dead network is defined by a network who's latent state's absolute value sum is < some threhold value (ie. 1e-5).
+        A dead network is defined by a network who's weight's absolute value sum is < some threhold value (ie. 1e-5).
         This means that the network will not provide any outputs no matter how many steps you take.
         """
 
-        return np.sum(np.abs(self.latent_state)) <= 1e-1
+        return np.sum(np.abs(self.graph_weights)) <= threshold
 
     def load_input(self, X, steps=1):
         """
@@ -68,8 +68,9 @@ class GraphNN:
         self.latent_state = (self.graph_weights.T * self.latent_state).T
 
 
-    def step(self, energy_retention=0.9):
-        self.latent_state = _step(self.graph_weights, self.latent_state) * energy_retention 
+    def step(self, weight_retention=0.9, energy_retention=0.9):
+        self.latent_state = _step(self.graph_weights, self.latent_state) * energy_retention
+        self.graph_weights *= weight_retention 
 
 
     def extract_output(self):
@@ -105,7 +106,7 @@ if __name__ == '__main__':
     max_steps = 1000
     for step in range(max_steps):
         # print('Step %i:' % step)
-        nn.step(energy_retention=0.2)
+        nn.step(weight_retention=0.2, energy_retention=0.2)
 
         # print(nn.latent_state.astype(np.int32))
         print('step %i output: %s' % (step, str(nn.extract_output())))
