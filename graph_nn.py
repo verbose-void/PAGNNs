@@ -64,7 +64,7 @@ class GraphNN:
         # convert input data into neuron format
         x = X[0] # TODO: handle batch
         D = len(x)
-        self.latent_state = np.pad(x[0], (0, self._neurons-D))
+        self.latent_state = np.pad(X[0], (0, self._neurons-D))
         self.latent_state = (self.graph_weights.T * self.latent_state).T
 
 
