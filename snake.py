@@ -21,13 +21,14 @@ TAIL_CHAR = colored(EMPTY_CHAR, 'blue')
 
 class Board:
     
-    def __init__(self, world_size=(10, 10), choose_direction_function=None, reward_callback=None, max_tail_length=5):
+    def __init__(self, world_size=(10, 10), choose_direction_function=None, reward_callback=None, max_tail_length=15, \
+                 increase_tail_frequency=5):
         np.set_printoptions(threshold=20000)
         self.arr = np.zeros(world_size) 
         self.apples_eaten = 0
         self._max_tail_length = max_tail_length
         self._current_tail_length = 0
-        self._increase_tail_frequency = 1 # TODO
+        self._increase_tail_frequency = increase_tail_frequency
         self.tail_positions = []
 
         # spawn snake
