@@ -12,8 +12,6 @@ from snake import Board as SnakeEnvironment, VALID_DIRECTIONS
 from scipy.special import softmax
 
 
-APPLE_REWARD = 1.3 # reverse weight_retention application
-
 def _get_hyperparam(x, integer=False):
     if isinstance(x, tuple):
         if integer:
@@ -65,7 +63,7 @@ class RandomSnakePopulation:
 
         env = SnakeEnvironment(self._world_size, \
                 lambda env: self.get_direction_prediction(nn), \
-                lambda _: nn.reward(APPLE_REWARD))
+                lambda _, r: nn.reward(r))
 
         self.networks[idx] = nn
         self.environments[idx] = env
@@ -88,6 +86,7 @@ class RandomSnakePopulation:
         self._best_hyperparameters = None
         self._best_network_initial_random_state = None
         self._scores = []
+        self._penalties = []
         self._frames = []
        
         self.networks = [None] * self._size
@@ -123,6 +122,7 @@ class RandomSnakePopulation:
         for env in self.environments:
             self._scores.append(env.apples_eaten)
             self._frames.append(env.frame)
+            self._penalties.append(env.penalties)
 
 
     def step_all(self, draw_best=True, check_dead=False):
@@ -157,6 +157,7 @@ class RandomSnakePopulation:
                     # log how many apples they ate before dying
                     self._scores.append(env.apples_eaten)
                     self._frames.append(env.frame)
+                    self._penalties.append(env.penalties)
 
             # UPDATE RANDOM STATE
             self.current_random_states[i] = np.random.get_state()
@@ -167,7 +168,8 @@ class RandomSnakePopulation:
             'deaths': self._deaths,
             'best_score_ever': self._best_score_ever,
             'scores': np.array(self._scores, dtype=int),
-            'frames': np.array(self._frames, dtype=int)
+            'penalties': np.array(self._penalties, dtype=int),
+            'frames': np.array(self._frames, dtype=int),
         }
 
 
@@ -175,7 +177,7 @@ if __name__ == '__main__':
     REPLAY = True
     output_file = 'best.pkl'
     
-    world_size = (20, 20)
+    world_size = (10, 10)
     population_size = 2000
     out_neurons = len(VALID_DIRECTIONS) # number of possible actions 
     in_neurons = 2
@@ -224,7 +226,7 @@ if __name__ == '__main__':
     np.random.set_state(best_nn_initial_random_state)
     env = SnakeEnvironment(world_size, \
             lambda env: population.get_direction_prediction(best_nn), \
-            lambda _: best_nn.reward(APPLE_REWARD))
+            lambda _, r: best_nn.reward(r))
 
     weight_retention = hyperparams['weight_retention']
     energy_retention = hyperparams['energy_retention']
