@@ -3,6 +3,9 @@ from time import sleep
 from termcolor import colored
 import os
 
+APPLE_REWARD = 1.3
+TAIL_PENALTY = 0.7
+
 APPLE_VALUE = 1 
 SNAKE_VALUE = 2
 TAIL_VALUE = 3
@@ -22,12 +25,13 @@ TAIL_CHAR = colored(EMPTY_CHAR, 'blue')
 class Board:
     
     def __init__(self, world_size=(10, 10), choose_direction_function=None, reward_callback=None, max_tail_length=15, \
-                 increase_tail_frequency=5):
+                 increase_tail_frequency=5, start_tail_length=1):
         np.set_printoptions(threshold=20000)
         self.arr = np.zeros(world_size) 
         self.apples_eaten = 0
+        self.penalties = 0
         self._max_tail_length = max_tail_length
-        self._current_tail_length = 0
+        self._current_tail_length = start_tail_length
         self._increase_tail_frequency = increase_tail_frequency
         self.tail_positions = []
 
@@ -95,6 +99,10 @@ class Board:
         for x, y in self.tail_positions:
             self.arr[x, y] = TAIL_VALUE
 
+        if self.arr[nx, ny] == TAIL_VALUE:
+            # if in it's own tail, punish (TODO: don't kill for now)
+            result = 'tail'
+
         self.arr[nx, ny] = SNAKE_VALUE
 
         return result
@@ -129,8 +137,9 @@ class Board:
                         s += TAIL_CHAR * 2
                 print(s)
         
-        print('Frame: %i Points: %i Tail: %i/%i %s' % (self.frame, self.apples_eaten, len(self.tail_positions), \
-                                                       self._max_tail_length, suffix))
+        print('Frame: %i Points: %i Penalties: %i Tail: %i/%i %s' % (self.frame, self.apples_eaten, self.penalties, \
+                                                                     len(self.tail_positions), \
+                                                                     self._max_tail_length, suffix))
 
 
     def get_observation(self):
@@ -142,10 +151,11 @@ class Board:
         return ax - sx, ay - sy 
 
     
-    def reward(self):
-        self.apples_eaten += 1
+    def reward(self, reward_value):
+        if reward_value > 1:
+            self.apples_eaten += 1
         if self.reward_callback is not None:
-            self.reward_callback(self)
+            self.reward_callback(self, reward_value)
 
 
     def grow_tail(self, n=1):
@@ -162,9 +172,12 @@ class Board:
 
             if result is 'eat':
                 self.spawn_apple()
-                self.reward()
+                self.reward(APPLE_REWARD)
                 if self.apples_eaten % self._increase_tail_frequency == 0:
                     self.grow_tail()
+            elif result is 'tail':
+                self.reward(TAIL_PENALTY)
+                self.penalties += 1
             
             if draw:
                 sleep(sleep_length)
