@@ -43,8 +43,13 @@ class RandomSnakePopulation:
 
         self.reset()
 
+
+    def get_new_network(self, idx, hyperparams, is_initial):
+        nn = GraphNN(self._in_neurons, hyperparams['neurons'], self._out_neurons, sparsity_value=hyperparams['sparsity_value'])         
+        return nn
+
     
-    def reset_network(self, idx, initial_seed=None):
+    def reset_network(self, idx, is_initial, initial_seed=None):
         # initialize hyper parameters. don't count as part of the initial random state
         hyperparams = {
             'weight_retention': _get_hyperparam(self._weight_retention),
@@ -52,7 +57,7 @@ class RandomSnakePopulation:
             'neurons': _get_hyperparam(self._neurons, integer=True),
             'sparsity_value': _get_hyperparam(self._sparsity_value),
         }
-        nn = GraphNN(self._in_neurons, hyperparams['neurons'], self._out_neurons, sparsity_value=hyperparams['sparsity_value'])         
+        nn = self.get_new_network(idx, hyperparams, is_initial)
 
         # set a random seed and log the state
         np.random.seed(initial_seed)
@@ -91,7 +96,7 @@ class RandomSnakePopulation:
         self.current_random_states = [None] * self._size
 
         for i in range(self._size):
-            self.reset_network(i)
+            self.reset_network(i, True) # is initial = True
 
 
     def get_direction_prediction(self, nn):
@@ -111,7 +116,7 @@ class RandomSnakePopulation:
             raise NotImplementedError('TODO')
 
         for step in iterator:
-            population.step_all(draw_best=draw_best, check_dead=((step+1) % self._check_death_frequency == 0))
+            self.step_all(draw_best=draw_best, check_dead=((step+1) % self._check_death_frequency == 0))
 
         # after doing a run, store all current scores
         for env in self.environments:
@@ -145,7 +150,7 @@ class RandomSnakePopulation:
             if check_dead:
                 if nn.is_dead():
                     # network is dead, reinitialize it and it's environment
-                    self.reset_network(i)
+                    self.reset_network(i, False) # not initial
                     self._deaths += 1 
                     # log how many apples they ate before dying
                     self._scores.append(env.apples_eaten)
@@ -167,7 +172,7 @@ if __name__ == '__main__':
     output_file = 'best.pkl'
     
     world_size = (10, 10)
-    population_size = 1000
+    population_size = 2000
     out_neurons = len(VALID_DIRECTIONS) # number of possible actions 
     in_neurons = 2
 
@@ -175,13 +180,13 @@ if __name__ == '__main__':
     weight_retention = (0.1, 1)
     energy_retention = (0.1, 1) 
     sparsity_value = (0, 0.9)
-    neurons = (in_neurons + out_neurons, 25)
+    neurons = (in_neurons + out_neurons, 10)
 
 
     if not REPLAY:
         population = RandomSnakePopulation(population_size, in_neurons, neurons, out_neurons, weight_retention=weight_retention, \
                                      energy_retention=energy_retention, sparsity_value=sparsity_value, world_size=world_size)
-        population.run(1000, draw_best=False) 
+        population.run(10000, draw_best=False) 
         # print(population.metrics())
 
         # get best found network & random state
