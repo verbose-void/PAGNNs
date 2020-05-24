@@ -1,4 +1,5 @@
 import numpy as np
+from copy import deepcopy
 from graph_ffnn import _step
 
 
@@ -42,9 +43,14 @@ class GraphNN:
             raise NotImplementedError('TODO')
 
         self.graph_weights = _init_weights(self.graph_weights, sparsity_value)
+        self._initial_weights = deepcopy(self.graph_weights) # save initial weights for later testing
 
     def reset_latent_state(self):
         self.latent_state = np.zeros((self._neurons, self._neurons), dtype=self._dtype)
+
+    def revert_to_initial(self):
+        self.graph_weights = deepcopy(self._initial_weights)
+        self.reset_latent_state()
 
     def is_dead(self, threshold=1e-1):
         """
