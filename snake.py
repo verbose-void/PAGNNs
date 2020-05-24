@@ -41,7 +41,7 @@ class Board:
 
         # validate direction 
         if not direction in VALID_DIRECTIONS:
-            raise Exception('Direction %s not found. Valid: %s' % (direction, str(VALID_DRECTIONS)))
+            raise Exception('Direction %s not found. Valid: %s' % (direction, str(VALID_DIRECTIONS)))
 
         # handle movement
         x, y = np.where(self.arr == SNAKE_VALUE)
@@ -70,7 +70,6 @@ class Board:
             y = np.random.randint(self.arr.shape[1])
 
         if self.arr[x, y] != 0:
-            print('no')
             return self.spawn_apple()
 
         self.arr[x, y] = APPLE_VALUE
