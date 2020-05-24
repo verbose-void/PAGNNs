@@ -1,9 +1,17 @@
 import numpy as np
 
+
+def _init_weights(W, s, low=-3, high=3):
+    if np.random.uniform() > s:
+        return np.random.uniform(low=low, high=high+1)
+    return 0.0 
+_init_weights = np.vectorize(_init_weights)
+
+
 class GraphNN:
 
     def __init__(self, in_neurons, neurons, out_neurons, sparsity_value=0.5, force_input_connections=False, \
-                 force_output_connections=False):
+                 force_output_connections=False, dtype=np.float32):
         """
         Similar to GraphFFNN, however this class isn't forced to follow a Feed-Forward structure.
         """
@@ -15,7 +23,7 @@ class GraphNN:
         self._out_neurons = out_neurons
         self._neurons = neurons
 
-        self.graph_weights = np.zeros((self._neurons, self._neurons))
+        self.graph_weights = np.zeros((self._neurons, self._neurons), dtype=dtype)
 
         """
         Weight initialization methods:
@@ -30,7 +38,10 @@ class GraphNN:
         if force_input_connections or force_output_connections:
             raise NotImplementedError('TODO')
 
+        self.graph_weights = _init_weights(self.graph_weights, sparsity_value)
+
 if __name__ == '__main__':
-    nn = GraphNN(1, 5, 1, sparsity_value=0.5)
+    nn = GraphNN(1, 10, 1, sparsity_value=0.9)
         
-    print(nn)
+    # -print(nn)
+    print(nn.graph_weights, nn.graph_weights.dtype)
