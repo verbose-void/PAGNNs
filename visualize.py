@@ -5,7 +5,11 @@ import pickle
 
 fn = 'best.pkl'
 with open(fn, 'rb') as f:
-    best_nn, rstate = pickle.load(f)
+    best_nn, rstate, hyperparams, metrics = pickle.load(f)
+
+print(hyperparams)
+plt.hist(metrics['scores'], log=True)
+plt.show()
 
 best_nn.revert_to_initial()
 W = best_nn.graph_weights
