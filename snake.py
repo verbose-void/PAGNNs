@@ -41,7 +41,6 @@ class Board:
         x, y = np.where(self.arr == APPLE_VALUE)
         return x[0], y[0]
 
-    
 
     def move_snake(self, direction=None):
         # choose direction
