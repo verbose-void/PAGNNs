@@ -141,14 +141,25 @@ class Board:
                                                                      len(self.tail_positions), \
                                                                      self._max_tail_length, suffix))
 
+    def get_tail_deltas(self, sx, sy):
+        deltas = []
+        for tx, ty in self.tail_positions:
+            deltas.append(tx-sx)
+            deltas.append(ty-sy)
+        return deltas
+        
 
-    def get_observation(self):
+    def get_observation(self, tail_deltas=True):
         # the observation is the sensors acting agents have access to
         # for this case, we'll use the delta x & y components for the distance between the agent & the apple 
         sx, sy = self.get_snake_pos()
         ax, ay = self.get_apple_pos()
 
-        return ax - sx, ay - sy 
+        if not tail_deltas:
+            return ax-sx, ay-sy
+
+        tail_deltas = self.get_tail_deltas(sx, sy)
+        return [ax-sx, ay-sy, *tail_deltas]
 
     
     def reward(self, reward_value):

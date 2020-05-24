@@ -22,7 +22,8 @@ def _get_hyperparam(x, integer=False):
 class RandomSnakePopulation:
 
     def __init__(self, size, in_neurons, neurons, out_neurons, world_size=(10, 10), \
-                 weight_retention=0.9, energy_retention=0.9, sparsity_value=0.5):
+                 weight_retention=0.9, energy_retention=0.9, sparsity_value=0.5, \
+                 max_tail_size=10):
         """
         If neurons, weight_retention, or energy_retention are tuples of size 2, treat them as ranges.
         """
@@ -32,6 +33,7 @@ class RandomSnakePopulation:
         self._in_neurons = in_neurons
         self._neurons = neurons
         self._out_neurons = out_neurons
+        self._max_tail_size = max_tail_size
 
         self._weight_retention = weight_retention
         self._energy_retention = energy_retention
@@ -63,7 +65,7 @@ class RandomSnakePopulation:
 
         env = SnakeEnvironment(self._world_size, \
                 lambda env: self.get_direction_prediction(nn), \
-                lambda _, r: nn.reward(r))
+                lambda _, r: nn.reward(r), max_tail_length=self._max_tail_size)
 
         self.networks[idx] = nn
         self.environments[idx] = env
@@ -174,25 +176,27 @@ class RandomSnakePopulation:
 
 
 if __name__ == '__main__':
-    REPLAY = True
+    REPLAY = False
     output_file = 'best.pkl'
-    
-    world_size = (10, 10)
-    population_size = 2000
+
+    max_tail_size = 10 
+    world_size = (20, 20)
+    population_size = 3000
     out_neurons = len(VALID_DIRECTIONS) # number of possible actions 
-    in_neurons = 2
+    in_neurons = 2 + max_tail_size * 2
 
     # hyperparameter ranges
     weight_retention = (0.1, 1)
     energy_retention = (0.1, 1) 
     sparsity_value = (0, 0.9)
-    neurons = (in_neurons + out_neurons, 10)
+    neurons = (in_neurons + out_neurons, in_neurons + out_neurons + 5)
 
 
     if not REPLAY:
         population = RandomSnakePopulation(population_size, in_neurons, neurons, out_neurons, weight_retention=weight_retention, \
-                                     energy_retention=energy_retention, sparsity_value=sparsity_value, world_size=world_size)
-        population.run(15, draw_best=False) 
+                                     energy_retention=energy_retention, sparsity_value=sparsity_value, world_size=world_size, \
+                                     max_tail_size=max_tail_size)
+        population.run(1000, draw_best=False) 
         # print(population.metrics())
 
         # get best found network & random state
@@ -206,7 +210,8 @@ if __name__ == '__main__':
                          population._best_hyperparameters, population.metrics()), f)
             print('Saved best net to %s.' % output_file)
         
-        print(population.metrics())
+        metrics = population.metrics()
+        print('longest run:', metrics['best_score_ever'])
         hyperparams = population._best_hyperparameters
     else:
         # open network saved in the output_file
@@ -226,7 +231,7 @@ if __name__ == '__main__':
     np.random.set_state(best_nn_initial_random_state)
     env = SnakeEnvironment(world_size, \
             lambda env: population.get_direction_prediction(best_nn), \
-            lambda _, r: best_nn.reward(r))
+            lambda _, r: best_nn.reward(r), max_tail_length=self._max_tail_size)
 
     weight_retention = hyperparams['weight_retention']
     energy_retention = hyperparams['energy_retention']
