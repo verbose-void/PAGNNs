@@ -87,9 +87,12 @@ class Board:
                 remove_x, remove_y = self.tail_positions.pop()
                 self.arr[remove_x, remove_y] = 0
             self.tail_positions.insert(0, np.array((x, y)))
-            self.arr[x, y] = TAIL_VALUE
+            # self.arr[x, y] = TAIL_VALUE
         elif self._current_tail_length > 0:
             self.tail_positions.insert(0, np.array((x, y)))
+            # self.arr[x, y] = TAIL_VALUE
+
+        for x, y in self.tail_positions:
             self.arr[x, y] = TAIL_VALUE
 
         self.arr[nx, ny] = SNAKE_VALUE
@@ -126,7 +129,8 @@ class Board:
                         s += TAIL_CHAR * 2
                 print(s)
         
-        print('Frame: %i Points: %i Tail: %i %s' % (self.frame, self.apples_eaten, len(self.tail_positions), suffix))
+        print('Frame: %i Points: %i Tail: %i/%i %s' % (self.frame, self.apples_eaten, len(self.tail_positions), \
+                                                       self._max_tail_length, suffix))
 
 
     def get_observation(self):
