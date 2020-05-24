@@ -73,6 +73,11 @@ class GraphNN:
         self.graph_weights *= weight_retention 
 
 
+    def reward(self, r):
+        # TODO: gradients. right now rewarding the network simply strengthens all connections (to reverse weight_retention)
+        self.graph_weights *= r
+
+
     def extract_output(self):
         Y = np.zeros(self._out_neurons)
         c = 0
