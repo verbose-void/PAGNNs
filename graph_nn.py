@@ -12,7 +12,7 @@ _init_weights = np.vectorize(_init_weights)
 class GraphNN:
 
     def __init__(self, in_neurons, neurons, out_neurons, sparsity_value=0.5, force_input_connections=False, \
-                 force_output_connections=False, dtype=np.float32):
+                 force_output_connections=False, dtype=np.float64):
         """
         Similar to GraphFFNN, however this class isn't forced to follow a Feed-Forward structure.
         """
@@ -64,9 +64,14 @@ class GraphNN:
         # convert input data into neuron format
         x = X[0] # TODO: handle batch
         D = len(x)
-        self.latent_state = np.pad(X[0], (0, self._neurons-D))
-        self.latent_state = (self.graph_weights.T * self.latent_state).T
+        
+        # this method works when the latent_state is empty, however if it's occupied it clears the entire network (no bueno)
+        # self.latent_state = np.pad(X[0], (0, self._neurons-D))
+        # self.latent_state = (self.graph_weights.T * self.latent_state).T
 
+        neuron_representation = np.pad(X[0], (0, self._neurons-D)).astype(self._dtype)
+        delta = (self.graph_weights.T * neuron_representation).T
+        self.latent_state += delta
 
     def step(self, weight_retention=0.9, energy_retention=0.9):
         self.latent_state = _step(self.graph_weights, self.latent_state) * energy_retention
@@ -88,7 +93,7 @@ class GraphNN:
 
 
 if __name__ == '__main__':
-    input_features = 1 
+    input_features = 2 
     output_features = 2 
     neurons = 5
     nn = GraphNN(input_features, neurons, output_features, sparsity_value=0.5)
@@ -104,11 +109,11 @@ if __name__ == '__main__':
     print('Initial State')
     print(nn.latent_state.astype(np.int32))
 
-    print('After input Loading')
+    print('After Input Loading')
     nn.load_input(X)
     print(nn.latent_state.astype(np.int32))
     
-    max_steps = 1000
+    max_steps = 1
     for step in range(max_steps):
         # print('Step %i:' % step)
         nn.step(weight_retention=0.2, energy_retention=0.2)
@@ -120,4 +125,10 @@ if __name__ == '__main__':
             print('Lasted %i steps.' % step)
             break
 
+    print('End State')
+    print(nn.latent_state.astype(np.int32))
+
+    print('End State AFTER Input Loading')
+    nn.load_input(X)
+    print(nn.latent_state.astype(np.int32))
 
