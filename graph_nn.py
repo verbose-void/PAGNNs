@@ -85,7 +85,7 @@ class GraphNN:
 
 
     def reward(self, r):
-        # TODO: gradients. right now rewarding the network simply strengthens all connections (to reverse weight_retention)
+        # TODO: gradients. right now rewarding the network simply strengthens/weakens all connections (to reverse weight_retention)
         self.graph_weights *= r
 
 
