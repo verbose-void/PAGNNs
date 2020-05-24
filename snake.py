@@ -85,9 +85,9 @@ class Board:
         self.arr[x, y] = APPLE_VALUE
 
 
-    def draw(self):
+    def draw(self, suffix=''):
         print(self.arr)
-        print('Frame: %i Points: %i' % (self.frame, self.apples_eaten))
+        print('Frame: %i Points: %i %s' % (self.frame, self.apples_eaten, suffix))
 
 
     def get_observation(self):
@@ -105,10 +105,10 @@ class Board:
             self.reward_callback(self)
 
 
-    def rollout(self, steps, sleep_length=1, draw=True):
+    def rollout(self, steps, sleep_length=1, draw=True, suffix=''):
         if draw:
             os.system('clear') 
-            self.draw()
+            self.draw(suffix=suffix)
 
         for _ in range(steps):
             result = self.move_snake()
@@ -120,7 +120,7 @@ class Board:
             if draw:
                 sleep(sleep_length)
                 os.system('clear')
-                self.draw()
+                self.draw(suffix=suffix)
 
             self.frame += 1
 
