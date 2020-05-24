@@ -1,4 +1,5 @@
 import numpy as np
+from graph_ffnn import _step
 
 
 def _init_weights(W, s, low=-3, high=3):
@@ -22,7 +23,9 @@ class GraphNN:
         self._in_neurons = in_neurons
         self._out_neurons = out_neurons
         self._neurons = neurons
-
+        self._dtype = dtype
+        
+        self.reset_latent_state()
         self.graph_weights = np.zeros((self._neurons, self._neurons), dtype=dtype)
 
         """
@@ -40,8 +43,56 @@ class GraphNN:
 
         self.graph_weights = _init_weights(self.graph_weights, sparsity_value)
 
+    def reset_latent_state(self):
+        self.latent_state = np.zeros((self._neurons, self._neurons), dtype=self._dtype)
+
+    def load_input(self, X, steps=1):
+        """
+        Load the input data "X" into neuron format and store in the network's "latent state". This is NOT a forward pass, it is also not a state step, it simply loads the data into the latent space. 
+
+        In order to propagate, call GraphNN.step(...).
+        """
+        
+        # convert input data into neuron format
+        x = X[0] # TODO: handle batch
+        D = len(x)
+        self.latent_state = np.pad(x[0], (0, self._neurons-D))
+        self.latent_state = (self.graph_weights.T * self.latent_state).T
+
+
+    def step(self, energy_retention=0.9):
+        self.latent_state = _step(self.graph_weights, self.latent_state) * energy_retention 
+
+
 if __name__ == '__main__':
-    nn = GraphNN(1, 10, 1, sparsity_value=0.9)
+    input_features = 1 
+    output_features = 1
+    neurons = 5
+    nn = GraphNN(input_features, neurons, output_features, sparsity_value=0.5)
         
     # -print(nn)
-    print(nn.graph_weights, nn.graph_weights.dtype)
+    # print(nn.graph_weights, nn.graph_weights.dtype)
+
+    X = np.random.randint(1000, size=(1, input_features))
+    print('X:', X)
+
+
+
+    print('Initial State')
+    print(nn.latent_state.astype(np.int32))
+
+    print('After input Loading')
+    nn.load_input(X)
+    print(nn.latent_state.astype(np.int32))
+    
+    max_steps = 100
+    for step in range(max_steps):
+        print('Step %i:' % step)
+        nn.step(energy_retention=0.1)
+        print(nn.latent_state.astype(np.int32))
+        print(np.sum(nn.latent_state))
+        if np.abs(np.sum(nn.latent_state)) <= 1e-5:
+            print('Lasted %i steps.' % step)
+            break
+
+
