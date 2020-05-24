@@ -1,6 +1,17 @@
 import numpy as np
+import numba
+from numba import jit, float64 
 import time
 
+@jit(float64[:, :](float64[:, :], float64[:, :]), nopython=True)
+def _step(graph_weights, latent_graph_state):
+    next_state = np.zeros(latent_graph_state.shape)
+
+    for i in range(latent_graph_state.shape[0]):
+        # next_state += self.graph_weights * np.transpose([neuron]) # this method is MUCH slower
+        next_state += graph_weights.T * latent_graph_state[i] 
+
+    return next_state.T
 
 class GraphFFNN:
 
@@ -59,43 +70,39 @@ class GraphFFNN:
         for i in range(output_dim):
             self.graph_weights[-(i+1), -(i+1)] = 1
 
-    def forward(self, X, mode='normal'):
-        if mode not in ('normal', 'graph'):
-            raise Exception('Forward mode must be normal or graph.')
-        
-        if mode == 'normal':
-            # TODO: Currently only linear transforms. We need to introduce non-linearity
-            
-            Z = X.T
-            for W, B in zip(self.W, self.B):
-                Z = np.dot(W.T, Z)
-                Z += np.transpose([B])
-            Y = Z.T
-
-        elif mode == 'graph':
-            # TODO: handle batch later
-            state = X[0]
-            D = len(state)
-            state = np.pad(state, (0, self._num_neurons-D))
-            state = self.graph_weights * np.transpose([state])
-
-            for _ in range(len(self.hidden_units)+1):
-                state = self.graph_step(state)
-            
-            # extract the output neurons after the steps
-            Y = np.expand_dims(self.extract_output(state), axis=0)
-
+    def normal_forward(self, X):
+        Z = X.T
+        for W, B in zip(self.W, self.B):
+            Z = np.dot(W.T, Z)
+            Z += np.transpose([B])
+        Y = Z.T
         return Y
+
+    def graph_forward(self, X):
+        # TODO: handle batch later
+        state = X[0]
+        D = len(state)
+        state = np.pad(state, (0, self._num_neurons-D))
+        state = self.graph_weights * np.transpose([state])
+
+        for _ in range(len(self.hidden_units)+1):
+            state = self.graph_step(state)
+        
+        # extract the output neurons after the steps
+        Y = np.expand_dims(self.extract_output(state), axis=0)
+        return Y
+
 
     def graph_step(self, latent_graph_state):
         # TODO: make more efficient, for now we're traversing the graph nodes to their next edges
         
-        next_state = np.zeros(latent_graph_state.shape)
+        # next_state = np.zeros(latent_graph_state.shape)
 
-        for i, neuron in enumerate(latent_graph_state):
-            next_state += self.graph_weights * np.transpose([neuron])
-            
-        return next_state
+        # for neuron in latent_graph_state:
+            # next_state += self.graph_weights * np.transpose([neuron]) # this method is MUCH slower
+            # next_state += self.graph_weights.T * neuron 
+        # return next_state.T
+        return _step(self.graph_weights, latent_graph_state)
 
     def extract_output(self, latent_graph_state):
         Y = np.zeros(self.output_dim)
@@ -123,13 +130,17 @@ if __name__ == '__main__':
     
     # test normal neural network domain inference
     start = time.time()
-    y = gnn.forward(X, mode='normal')
+    y = gnn.normal_forward(X)
     normal_dt = time.time() - start
     print('Normal output:')
     print(y)
 
+    # since we're using numba, give it some time to warm up before comparing times
+    gnn.graph_forward(X)
+    gnn.graph_forward(X)
+
     start = time.time()
-    y_graph = gnn.forward(X, mode='graph')
+    y_graph = gnn.graph_forward(X)
     graph_dt = time.time() - start
     print('Graph output:')
     print(y_graph)
@@ -138,7 +149,7 @@ if __name__ == '__main__':
     print('Time Deltas:')
     print('Normal: %fms' % (normal_dt*1000))
     print('Graph: %fms' % (graph_dt*1000))
-    print('Graph is %ix slower.' % (graph_dt / normal_dt))
+    print('Graph is %.3fx slower.' % (graph_dt / normal_dt))
 
     # print()
     # print(gnn.graph_weights)
