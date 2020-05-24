@@ -83,7 +83,8 @@ class GraphFFNN:
         state = X[0]
         D = len(state)
         state = np.pad(state, (0, self._num_neurons-D))
-        state = self.graph_weights * np.transpose([state])
+        # state = self.graph_weights * np.transpose([state])
+        state = (self.graph_weights.T * state).T
 
         for _ in range(len(self.hidden_units)+1):
             state = self.graph_step(state)
