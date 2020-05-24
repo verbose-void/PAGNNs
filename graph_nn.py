@@ -64,9 +64,18 @@ class GraphNN:
         self.latent_state = _step(self.graph_weights, self.latent_state) * energy_retention 
 
 
+    def extract_output(self):
+        Y = np.zeros(self._out_neurons)
+        c = 0
+        for i in range(self._out_neurons):
+            Y[c] = self.latent_state[-i, -i]
+            c += 1
+        return Y
+
+
 if __name__ == '__main__':
     input_features = 1 
-    output_features = 1
+    output_features = 2 
     neurons = 5
     nn = GraphNN(input_features, neurons, output_features, sparsity_value=0.5)
         
@@ -85,13 +94,15 @@ if __name__ == '__main__':
     nn.load_input(X)
     print(nn.latent_state.astype(np.int32))
     
-    max_steps = 100
+    max_steps = 1000
     for step in range(max_steps):
-        print('Step %i:' % step)
-        nn.step(energy_retention=0.1)
-        print(nn.latent_state.astype(np.int32))
-        print(np.sum(nn.latent_state))
-        if np.abs(np.sum(nn.latent_state)) <= 1e-5:
+        # print('Step %i:' % step)
+        nn.step(energy_retention=0.2)
+
+        # print(nn.latent_state.astype(np.int32))
+        print('step %i output: %s' % (step, str(nn.extract_output())))
+
+        if np.sum(np.abs(nn.latent_state)) <= 1e-1:
             print('Lasted %i steps.' % step)
             break
 
