@@ -76,7 +76,6 @@ class RandomSnakePopulation:
         if self._best_idx == idx:
             self._best_idx = 0
             self._best_score = float('-inf')
-            self._best_hyperparameters = None
 
 
     def reset(self):
@@ -179,9 +178,9 @@ if __name__ == '__main__':
     REPLAY = False
     output_file = 'best.pkl'
 
-    max_tail_size = 10 
+    max_tail_size = 3 
     world_size = (20, 20)
-    population_size = 3000
+    population_size = 5000
     out_neurons = len(VALID_DIRECTIONS) # number of possible actions 
     in_neurons = 2 + max_tail_size * 2
 
@@ -196,7 +195,7 @@ if __name__ == '__main__':
         population = RandomSnakePopulation(population_size, in_neurons, neurons, out_neurons, weight_retention=weight_retention, \
                                      energy_retention=energy_retention, sparsity_value=sparsity_value, world_size=world_size, \
                                      max_tail_size=max_tail_size)
-        population.run(1000, draw_best=False) 
+        population.run(10000, draw_best=False) 
         # print(population.metrics())
 
         # get best found network & random state
@@ -218,7 +217,7 @@ if __name__ == '__main__':
         with open(output_file, 'rb') as f:
             best_nn, best_nn_initial_random_state, hyperparams, metrics = pickle.load(f)
             best_nn.revert_to_initial() 
-            
+
         population = RandomSnakePopulation(population_size, in_neurons, hyperparams['neurons'], out_neurons, \
                                      weight_retention=hyperparams['weight_retention'], \
                                      energy_retention=hyperparams['energy_retention'], \
@@ -231,7 +230,7 @@ if __name__ == '__main__':
     np.random.set_state(best_nn_initial_random_state)
     env = SnakeEnvironment(world_size, \
             lambda env: population.get_direction_prediction(best_nn), \
-            lambda _, r: best_nn.reward(r), max_tail_length=self._max_tail_size)
+            lambda _, r: best_nn.reward(r), max_tail_length=max_tail_size)
 
     weight_retention = hyperparams['weight_retention']
     energy_retention = hyperparams['energy_retention']
