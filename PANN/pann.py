@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 
+import numpy as np
+
 from math import ceil
 
 
@@ -31,10 +33,51 @@ class AdjacencyMatrix(nn.Module):
         self.input_neurons = input_neurons
         self.output_neurons = output_neurons
         self.n = n
+        self.state = None
+
+        self.zero_state()
 
 
-    def forward(self, x):
-        pass
+    def zero_state(self):
+        if self.state is None:
+            self.state = torch.zeros((self.n, self.n))
+
+
+    def load_input_neurons(self, x):
+        D = len(x[0]) # TODO batch
+
+        if D != self.input_neurons:
+            raise ValueError('dimensionality of input data must be the same as number of input neurons. D=%i expected %i.' % \
+                             (D, self.input_neurons))
+
+        self.state = np.pad(x[0], (0, self.n-D))
+        self.state = (self.weight.T * self.state).T
+
+
+    def extract_output_neurons(self):
+        Y = torch.zeros(self.output_neurons)
+        c = 0
+        for i in range(self.output_neurons, 0, -1):
+            Y[c] = self.state[-i, -i]
+            c += 1
+        return Y 
+
+
+    def step(self, n=1):
+        for _ in range(n):
+            next_state = torch.zeros(self.state.shape)
+
+            for i in range(self.state.shape[0]):
+                # next_state += self.graph_weights * np.transpose([neuron]) # this method is MUCH slower
+                next_state += self.weight.T * self.state[i] 
+
+            self.state = next_state.T
+
+
+    def forward(self, x, num_steps=1):
+        self.load_input_neurons(x)
+        self.step(n=num_steps)
+        return self.extract_output_neurons()
 
 
     def extra_repr(self):
@@ -55,8 +98,9 @@ class PANN(nn.Module):
         self.weight = AdjacencyMatrix(num_neurons, input_neurons=input_neurons, output_neurons=output_neurons, sparsity=initial_sparsity)
     
 
-    def forward(self, x):
-        pass
+    def forward(self, x, num_steps=1):
+        y = self.weight(x, num_steps=num_steps)
+        return y
 
 
     def extra_repr(self):
