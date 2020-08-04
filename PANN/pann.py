@@ -5,7 +5,7 @@ from math import ceil
 
 
 class AdjacencyMatrix(nn.Module):
-    def __init__(self, n, in_neurons=0, out_neurons=0, sparsity=0):
+    def __init__(self, n, input_neurons=0, output_neurons=0, sparsity=0):
         super(AdjacencyMatrix, self).__init__()
 
         if sparsity < 0 or sparsity > 1:
@@ -13,10 +13,10 @@ class AdjacencyMatrix(nn.Module):
 
         # initialize weights
         self.weight = torch.ones((n, n))
-        if out_neurons > 0:
-            self.hidden_weight = self.weight[in_neurons:-out_neurons]
+        if output_neurons > 0:
+            self.hidden_weight = self.weight[input_neurons:-output_neurons]
         else:
-            self.hidden_weight = self.weight[in_neurons:]
+            self.hidden_weight = self.weight[input_neurons:]
 
         # uniformly initialize weights
         nn.init.kaiming_uniform_(self.hidden_weight, mode='fan_in', nonlinearity='relu')
@@ -28,16 +28,36 @@ class AdjacencyMatrix(nn.Module):
         random_indices = indices_pool[:num_non_sparse_elems]
         _flat_hidden_weight[random_indices] = 0
 
+        self.input_neurons = input_neurons
+        self.output_neurons = output_neurons
+        self.n = n
+
+
+    def forward(self, x):
+        pass
+
+
+    def extra_repr(self):
+        return 'num_neurons=%i, input_neurons=%i, output_neurons=%i' % (self.n, self.input_neurons, self.output_neurons)
+
 
 class PANN(nn.Module):
-    def __init__(self, num_neurons, in_neurons, out_neurons, initial_sparsity=0.9):
+    def __init__(self, num_neurons, input_neurons, output_neurons, initial_sparsity=0.9):
         super(PANN, self).__init__()
 
-        if in_neurons + out_neurons > num_neurons:
+        if input_neurons + output_neurons > num_neurons:
             raise ValueError('number of allocated input & output neurons cannot add up to be greater than the number of total neurons. \
-                              got %i (input) + %i (output) > %i (total).' % (in_neurons, out_neurons, num_neurons))
+                              got %i (input) + %i (output) > %i (total).' % (input_neurons, output_neurons, num_neurons))
 
-        self.weight = AdjacencyMatrix(num_neurons, in_neurons=in_neurons, out_neurons=out_neurons, sparsity=initial_sparsity)
+        self.n = num_neurons
+        self.input_neurons = input_neurons
+        self.output_neurons = output_neurons
+        self.weight = AdjacencyMatrix(num_neurons, input_neurons=input_neurons, output_neurons=output_neurons, sparsity=initial_sparsity)
     
-    def forward(self):
+
+    def forward(self, x):
         pass
+
+
+    def extra_repr(self):
+        return 'num_neurons=%i, input_neurons=%i, output_neurons=%i' % (self.n, self.input_neurons, self.output_neurons)
