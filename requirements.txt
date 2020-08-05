@@ -2,3 +2,4 @@ wheel
 torch
 pandas
 matplotlib
+networkx
