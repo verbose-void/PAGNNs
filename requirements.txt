@@ -1,2 +1,4 @@
 wheel
 torch
+pandas
+matplotlib
