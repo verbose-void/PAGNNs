@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 
 
 if __name__ == '__main__':
-    seed = None # 666
+    seed = 666
     if seed is not None:
         torch.manual_seed(seed)
 
@@ -40,8 +40,10 @@ if __name__ == '__main__':
     train_dl = DataLoader(TensorDataset(train_x, train_y), batch_size=batch_size)
     test_dl = DataLoader(TensorDataset(test_x, test_y), batch_size=batch_size)
 
-    optimizer = torch.optim.Adam(pann.parameters(), lr=0.001)
-    baseline_optimizer = torch.optim.Adam(linear_model.parameters(), lr=0.0002)
+    pann_lr = 0.001
+    baseline_lr = 0.0001
+    optimizer = torch.optim.Adam(pann.parameters(), lr=pann_lr)
+    baseline_optimizer = torch.optim.Adam(linear_model.parameters(), lr=baseline_lr)
     num_steps = 5
 
     pann_history = {'train_loss': [], 'test_loss': []}
@@ -109,14 +111,16 @@ if __name__ == '__main__':
     # print(pann_history)
     # print(baseline_history)
 
-    plt.plot(pann_history['train_loss'], label='PANN')
-    plt.plot(baseline_history['train_loss'], label='Baseline')
+    plt.subplot(1, 2, 1)
+    plt.plot(pann_history['train_loss'], label='PANN (lr: %f)' % pann_lr)
+    plt.plot(baseline_history['train_loss'], label='Baseline (lr: %f)' % baseline_lr)
     plt.legend()
     plt.title('train loss')
-    plt.show()
 
+    plt.subplot(1, 2, 2)
     plt.plot(pann_history['test_loss'], label='PANN')
     plt.plot(baseline_history['test_loss'], label='Baseline')
     plt.legend()
     plt.title('test loss')
+
     plt.show()
