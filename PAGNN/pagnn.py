@@ -5,6 +5,8 @@ import numpy as np
 
 from math import ceil
 
+import networkx as nx
+
 
 def _create_sparsity_freeze_function(weight):
     M = (weight == 0).int()
@@ -105,6 +107,30 @@ class AdjacencyMatrix(nn.Module):
         return 'num_neurons=%i, input_neurons=%i, output_neurons=%i' % (self.n, self.input_neurons, self.output_neurons)
 
 
+    def get_networkx_graph(self, return_color_map=True):
+        W = self.weight.detach().numpy()
+        G = nx.Graph(W)
+
+        if not return_color_map:
+            return G
+
+        color_map = []
+        for i, neuron in enumerate(W):
+            # "input" neurons
+            if i < self.input_neurons:
+                color_map.append('green')
+
+            # "hidden" neurons
+            elif i >= (self.n - self.output_neurons):
+                color_map.append('blue')
+
+            # "output" neurons
+            else:
+                color_map.append('gray')
+
+        return G, color_map
+
+
 class PAGNN(nn.Module):
     def __init__(self, num_neurons, input_neurons, output_neurons, initial_sparsity=0.9, freeze_sparsity_gradients=True):
         super(PAGNN, self).__init__()
@@ -130,3 +156,7 @@ class PAGNN(nn.Module):
 
     def extra_repr(self):
         return 'num_neurons=%i, input_neurons=%i, output_neurons=%i' % (self.n, self.input_neurons, self.output_neurons)
+
+
+    def get_networkx_graph(self, return_color_map=True):
+        return self.structure_adj_matrix.get_networkx_graph(return_color_map=return_color_map)
