@@ -13,12 +13,25 @@ class AdjacencyMatrix(nn.Module):
         if sparsity < 0 or sparsity > 1:
             raise ValueError('sparsity must be on the closed interval [0, 1]. got %i.' % sparsity)
 
+        self.input_neurons = input_neurons
+        self.output_neurons = output_neurons
+        self.n = n
+        self.state = None
+        self.sparsity = sparsity
+
         # initialize weights
-        self.weight = torch.ones((n, n))
-        if output_neurons > 0:
-            self.hidden_weight = self.weight[input_neurons:-output_neurons]
+        self.weight = nn.Parameter(torch.ones((n, n)))
+        self.reset_parameters()
+
+        self.zero_state()
+
+
+    @torch.no_grad()
+    def reset_parameters(self):
+        if self.output_neurons > 0:
+            self.hidden_weight = self.weight[self.input_neurons:-self.output_neurons]
         else:
-            self.hidden_weight = self.weight[input_neurons:]
+            self.hidden_weight = self.weight[self.input_neurons:]
 
         # uniformly initialize weights
         nn.init.kaiming_uniform_(self.hidden_weight, mode='fan_in', nonlinearity='relu')
@@ -26,23 +39,18 @@ class AdjacencyMatrix(nn.Module):
         # inject random sparsity
         _flat_hidden_weight = self.hidden_weight.view(-1)
         indices_pool = torch.randperm(len(_flat_hidden_weight))
-        num_non_sparse_elems = min(len(indices_pool)-1, int(ceil(len(indices_pool)*sparsity)))
+        num_non_sparse_elems = min(len(indices_pool)-1, int(ceil(len(indices_pool)*self.sparsity)))
         random_indices = indices_pool[:num_non_sparse_elems]
         _flat_hidden_weight[random_indices] = 0
 
-        self.input_neurons = input_neurons
-        self.output_neurons = output_neurons
-        self.n = n
-        self.state = None
 
-        self.zero_state()
-
-
+    @torch.no_grad()
     def zero_state(self):
         if self.state is None:
             self.state = torch.zeros((self.n, self.n))
 
 
+    @torch.no_grad()
     def load_input_neurons(self, x):
         D = len(x[0]) # TODO batch
 
@@ -69,7 +77,7 @@ class AdjacencyMatrix(nn.Module):
 
             for i in range(self.state.shape[0]):
                 # next_state += self.graph_weights * np.transpose([neuron]) # this method is MUCH slower
-                next_state += self.weight.T * self.state[i] 
+                next_state = next_state + (self.weight.T * self.state[i])
 
             self.state = next_state.T
 
@@ -95,11 +103,11 @@ class PANN(nn.Module):
         self.n = num_neurons
         self.input_neurons = input_neurons
         self.output_neurons = output_neurons
-        self.weight = AdjacencyMatrix(num_neurons, input_neurons=input_neurons, output_neurons=output_neurons, sparsity=initial_sparsity)
+        self.structure_adj_matrix = AdjacencyMatrix(num_neurons, input_neurons=input_neurons, output_neurons=output_neurons, sparsity=initial_sparsity)
     
 
     def forward(self, x, num_steps=1):
-        y = self.weight(x, num_steps=num_steps)
+        y = self.structure_adj_matrix(x, num_steps=num_steps)
         return y
 
 
