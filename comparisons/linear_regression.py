@@ -111,13 +111,13 @@ if __name__ == '__main__':
     fig = plt.figure(figsize=(16, 9))
     fig.suptitle('Linear Regression - (PAGNN vs torch.nn.Linear)', fontsize=24)
 
-    plt.subplot(222)
+    plt.subplot(221)
     plt.plot(pagnn_history['train_loss'], label='PAGNN (lr: %f)' % pagnn_lr)
     plt.plot(baseline_history['train_loss'], label='Baseline (lr: %f)' % baseline_lr)
     plt.legend()
     plt.title('train loss')
 
-    plt.subplot(221)
+    plt.subplot(222)
     plt.plot(pagnn_history['test_loss'], label='PAGNN')
     plt.plot(baseline_history['test_loss'], label='Baseline')
     plt.legend()
