@@ -5,5 +5,10 @@
 2. `source pagnn_env/bin/activate`
 3. `pip install -r requirements.txt`
 
-## Showcase
+## Showcase:
 ![](figures/linear_regression.png)
+
+## Datasets Credit:
+- Linear Regression: `datasets/linear_regression/` [source](https://www.kaggle.com/andonians/random-linear-regression)
+- Multi-Variate Linear Regression: `datasets/mv_linear_regression/` [source](https://www.kaggle.com/mirichoi0218/insurance)
+- Non-Linear Regression: `datasets/non_linear_regression/` [source](https://www.kaggle.com/toubali/nonlinear-regression)
