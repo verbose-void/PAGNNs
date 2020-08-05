@@ -50,7 +50,7 @@ if __name__ == '__main__':
     pagnn_history = {'train_loss': [], 'test_loss': []}
     baseline_history = {'train_loss': [], 'test_loss': []}
     
-    for epoch in range(10):
+    for epoch in range(15):
         with torch.enable_grad():
             pagnn_total_loss = 0
             baseline_total_loss = 0
