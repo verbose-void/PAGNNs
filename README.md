@@ -14,4 +14,4 @@
 ## Datasets Credit:
 - Linear Regression: `datasets/linear_regression/` [source](https://www.kaggle.com/andonians/random-linear-regression)
 - Multi-Variate Linear Regression: `datasets/mv_linear_regression/` [source](https://www.kaggle.com/mirichoi0218/insurance)
-- Non-Linear Regression: `datasets/non_linear_regression/` [source](https://www.kaggle.com/toubali/nonlinear-regression)
+- Non-Linear Regression: `datasets/non_linear_regression/` [source](https://www.kaggle.com/uciml/iris)
