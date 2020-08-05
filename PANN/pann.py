@@ -6,6 +6,15 @@ import numpy as np
 from math import ceil
 
 
+def _create_sparsity_freeze_function(weight):
+    M = (weight == 0).int()
+
+    def _freeze_sparsity(grad):
+        return grad * M
+
+    return _freeze_sparsity
+
+
 class AdjacencyMatrix(nn.Module):
     def __init__(self, n, input_neurons=0, output_neurons=0, sparsity=0):
         super(AdjacencyMatrix, self).__init__()
@@ -27,21 +36,25 @@ class AdjacencyMatrix(nn.Module):
 
 
     @torch.no_grad()
-    def reset_parameters(self):
+    def reset_parameters(self, only_modify_hidden_weight=False):
         if self.output_neurons > 0:
             self.hidden_weight = self.weight[self.input_neurons:-self.output_neurons]
         else:
             self.hidden_weight = self.weight[self.input_neurons:]
 
+        weights_to_initialize = self.weight
+        if only_modify_hidden_weight:
+            weights_to_initialize = self.hidden_weight
+            
         # uniformly initialize weights
-        nn.init.kaiming_uniform_(self.hidden_weight, mode='fan_in', nonlinearity='relu')
+        nn.init.kaiming_uniform_(weights_to_initialize, mode='fan_in', nonlinearity='relu')
 
         # inject random sparsity
-        _flat_hidden_weight = self.hidden_weight.view(-1)
-        indices_pool = torch.randperm(len(_flat_hidden_weight))
+        _flat = weights_to_initialize.view(-1)
+        indices_pool = torch.randperm(len(_flat))
         num_non_sparse_elems = min(len(indices_pool)-1, int(ceil(len(indices_pool)*self.sparsity)))
         random_indices = indices_pool[:num_non_sparse_elems]
-        _flat_hidden_weight[random_indices] = 0
+        _flat[random_indices] = 0
 
 
     @torch.no_grad()
@@ -93,7 +106,7 @@ class AdjacencyMatrix(nn.Module):
 
 
 class PANN(nn.Module):
-    def __init__(self, num_neurons, input_neurons, output_neurons, initial_sparsity=0.9):
+    def __init__(self, num_neurons, input_neurons, output_neurons, initial_sparsity=0.9, freeze_sparsity_gradients=True):
         super(PANN, self).__init__()
 
         if input_neurons + output_neurons > num_neurons:
@@ -104,6 +117,10 @@ class PANN(nn.Module):
         self.input_neurons = input_neurons
         self.output_neurons = output_neurons
         self.structure_adj_matrix = AdjacencyMatrix(num_neurons, input_neurons=input_neurons, output_neurons=output_neurons, sparsity=initial_sparsity)
+
+        if freeze_sparsity_gradients:
+            sam_weight = self.structure_adj_matrix.weight
+            self.structure_adj_matrix.weight.register_hook(_create_sparsity_freeze_function(sam_weight))
     
 
     def forward(self, x, num_steps=1):

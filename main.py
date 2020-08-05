@@ -15,7 +15,7 @@ if __name__ == '__main__':
     print(pann.structure_adj_matrix.weight)
 
     optimizer = torch.optim.Adam(pann.parameters(), lr=0.01)
-    for epoch in range(100):
+    for epoch in range(500):
         optimizer.zero_grad()
         with torch.enable_grad():
             y = pann(X, num_steps=3).unsqueeze(-1)
