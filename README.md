@@ -1,10 +1,11 @@
 # Persistent Artificial Graph-based Neural Networks (PAGNNs)
 
 ## Environment Setup:
-1. `cd path/to/PAGNNs/`
-2. `python3 -m venv pagnn_env`
-3. `source pagnn_env/bin/activate`
-4. `pip install -e .`
+1. Clone this repository.
+2. `cd path/to/cloned/PAGNNs/`
+3. `python3 -m venv pagnn_env`
+4. `source pagnn_env/bin/activate`
+5. `pip install -e .`
 
 ## Showcase:
 ![](figures/linear_regression.png)
