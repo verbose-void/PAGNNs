@@ -12,6 +12,7 @@ from math import isnan
 import pandas as pd
 
 import matplotlib.pyplot as plt
+import networkx as nx
 
 
 if __name__ == '__main__':
@@ -19,7 +20,7 @@ if __name__ == '__main__':
     if seed is not None:
         torch.manual_seed(seed)
 
-    pann = PANN(10, 1, 1, initial_sparsity=0.5)
+    pann = PANN(5, 1, 1, initial_sparsity=0.5)
     print(pann)
 
     linear_model = torch.nn.Linear(1, 1)
@@ -111,16 +112,25 @@ if __name__ == '__main__':
     # print(pann_history)
     # print(baseline_history)
 
-    plt.subplot(1, 2, 1)
+    fig = plt.figure(figsize=(16, 9))
+    fig.suptitle('Linear Regression - (PANN vs torch.nn.Linear)', fontsize=24)
+
+    plt.subplot(222)
     plt.plot(pann_history['train_loss'], label='PANN (lr: %f)' % pann_lr)
     plt.plot(baseline_history['train_loss'], label='Baseline (lr: %f)' % baseline_lr)
     plt.legend()
     plt.title('train loss')
 
-    plt.subplot(1, 2, 2)
+    plt.subplot(221)
     plt.plot(pann_history['test_loss'], label='PANN')
     plt.plot(baseline_history['test_loss'], label='Baseline')
     plt.legend()
     plt.title('test loss')
 
+    plt.subplot(212)
+    G = nx.Graph(pann.structure_adj_matrix.weight.detach().numpy())
+    nx.draw(G, with_labels=True)
+    plt.title('PANN architecture')
+
+    plt.savefig('figures/linear_regression.png', transparent=True)
     plt.show()
