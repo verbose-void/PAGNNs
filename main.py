@@ -1,20 +1,19 @@
 import torch
 import torch.nn.functional as F
 
-from PANN.pann import PANN
-from experiments.graph_ffnn import _step
+from PAGNN.pagnn import PAGNN
 
 import numpy as np
 
 
-def count_epochs_to_converge(pann, X, T, num_steps, thresh=1e-4, max_epochs=1000):
-    optimizer = torch.optim.Adam(pann.parameters(), lr=0.01)
+def count_epochs_to_converge(pagnn, X, T, num_steps, thresh=1e-4, max_epochs=1000):
+    optimizer = torch.optim.Adam(pagnn.parameters(), lr=0.01)
     num_epochs = 0
     loss_value = 1
     while loss_value > 0.0001:
         optimizer.zero_grad()
         with torch.enable_grad():
-            y = pann(X, num_steps=num_steps).unsqueeze(-1)
+            y = pagnn(X, num_steps=num_steps).unsqueeze(-1)
             loss = F.mse_loss(y, T)
 
         loss.backward()
@@ -28,8 +27,8 @@ def count_epochs_to_converge(pann, X, T, num_steps, thresh=1e-4, max_epochs=1000
     return num_epochs
 
 if __name__ == '__main__':
-    pann = PANN(10, 1, 1, initial_sparsity=0.5)
-    print(pann)
+    pagnn = PAGNN(10, 1, 1, initial_sparsity=0.5)
+    print(pagnn)
     X = torch.tensor(np.random.uniform(low=0, high=10, size=(1, 1)))
     T = torch.tensor(np.random.uniform(low=0, high=10, size=(1, 1)), dtype=torch.float)
 
@@ -40,7 +39,7 @@ if __name__ == '__main__':
         print('testing %i...' % num)
         total_epochs = 0
         for _ in range(num_runs):
-            epochs = count_epochs_to_converge(pann, X, T, num)
+            epochs = count_epochs_to_converge(pagnn, X, T, num)
             total_epochs += epochs
         avg = total_epochs / num_runs
         averages.append(avg)

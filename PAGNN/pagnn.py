@@ -105,9 +105,9 @@ class AdjacencyMatrix(nn.Module):
         return 'num_neurons=%i, input_neurons=%i, output_neurons=%i' % (self.n, self.input_neurons, self.output_neurons)
 
 
-class PANN(nn.Module):
+class PAGNN(nn.Module):
     def __init__(self, num_neurons, input_neurons, output_neurons, initial_sparsity=0.9, freeze_sparsity_gradients=True):
-        super(PANN, self).__init__()
+        super(PAGNN, self).__init__()
 
         if input_neurons + output_neurons > num_neurons:
             raise ValueError('number of allocated input & output neurons cannot add up to be greater than the number of total neurons. \
