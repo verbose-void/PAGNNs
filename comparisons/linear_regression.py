@@ -124,8 +124,8 @@ if __name__ == '__main__':
     plt.title('test loss')
 
     plt.subplot(212)
-    G = nx.Graph(pagnn.structure_adj_matrix.weight.detach().numpy())
-    nx.draw(G, with_labels=True)
+    G, color_map = pagnn.get_networkx_graph(return_color_map=True)
+    nx.draw(G, with_labels=True, node_color=color_map)
     plt.title('PAGNN architecture')
 
     plt.savefig('figures/linear_regression.png', transparent=True)
