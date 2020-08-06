@@ -9,10 +9,11 @@ import networkx as nx
 
 
 def _create_sparsity_freeze_function(weight):
-    M = (weight == 0).int()
+    M = (weight == 0)
 
     def _freeze_sparsity(grad):
-        return grad * M
+        grad[M] = 0
+        return grad
 
     return _freeze_sparsity
 
@@ -50,6 +51,17 @@ class AdjacencyMatrix(nn.Module):
             
         # uniformly initialize weights
         nn.init.kaiming_uniform_(weights_to_initialize, mode='fan_in', nonlinearity='relu')
+
+        """
+        rules for injecting sparsity:
+
+        1. every neuron must have at least 1 OUTWARD connection (no OUTWARD neuron weight vector can be 100% sparse)
+        2. every neuron must have at least 1 INWARD connection (no INWARD neuron weight vector can be 100% sparse)
+        (note on 1 & 2: essentially this means that each ROW/COLUMN magnitudal summation MUST be > 0)
+
+        the reason for rules 1 & 2 is if you had a 100% sparse neuron, it's a source of informational death and can be simply
+        removed by reducing the number of allocated neurons.
+        """
 
         # inject random sparsity
         _flat = weights_to_initialize.view(-1)
@@ -109,7 +121,7 @@ class AdjacencyMatrix(nn.Module):
 
     def get_networkx_graph(self, return_color_map=True):
         W = self.weight.detach().numpy()
-        G = nx.Graph(W)
+        G = nx.DiGraph(W)
 
         if not return_color_map:
             return G
