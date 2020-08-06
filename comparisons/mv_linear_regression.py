@@ -50,7 +50,7 @@ if __name__ == '__main__':
     print('number of data features:', D)
 
     # create models
-    pagnn = PAGNN(D + 5, D, 1, initial_sparsity=0.5)
+    pagnn = PAGNN(D + 5, D, 1, graph_generator=nx.generators.classic.complete_graph)
     print(pagnn)
     linear_model = torch.nn.Linear(D, 1)
     print(linear_model)
