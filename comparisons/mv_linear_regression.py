@@ -64,7 +64,7 @@ if __name__ == '__main__':
     train_T, test_T = T[:split], T[split:]
 
     # create data loaders
-    batch_size = 1
+    batch_size = 10
     train_dl = DataLoader(TensorDataset(train_X, train_T), batch_size=batch_size)
     test_dl = DataLoader(TensorDataset(test_X, test_T), batch_size=batch_size)
 
@@ -83,13 +83,13 @@ if __name__ == '__main__':
             baseline_total_loss = 0
 
             for x, t in train_dl:
-                optimizer.zero_grad()
-                baseline_optimizer.zero_grad()
-
                 x = x.float()
                 t = t.float().unsqueeze(-1)
 
-                y = pagnn(x, num_steps=num_steps).unsqueeze(-1)
+                optimizer.zero_grad()
+                baseline_optimizer.zero_grad()
+
+                y = pagnn(x, num_steps=num_steps)
                 baseline_y = linear_model(x)
 
                 loss = F.mse_loss(y, t)
@@ -118,7 +118,7 @@ if __name__ == '__main__':
                 x = x.float()
                 t = t.float().unsqueeze(-1)
 
-                y = pagnn(x, num_steps=num_steps).unsqueeze(-1)
+                y = pagnn(x, num_steps=num_steps)
                 baseline_y = linear_model(x)
 
                 loss = F.mse_loss(y, t)
