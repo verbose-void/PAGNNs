@@ -37,12 +37,12 @@ if __name__ == '__main__':
     # print('test shapes', test_x.shape, test_y.shape)
 
     # create data loaders
-    batch_size = 1
+    batch_size = 10
     train_dl = DataLoader(TensorDataset(train_x, train_y), batch_size=batch_size)
     test_dl = DataLoader(TensorDataset(test_x, test_y), batch_size=batch_size)
 
-    pagnn_lr = 0.001
-    baseline_lr = 0.001
+    pagnn_lr = 0.01
+    baseline_lr = 0.01
     optimizer = torch.optim.Adam(pagnn.parameters(), lr=pagnn_lr)
     baseline_optimizer = torch.optim.Adam(linear_model.parameters(), lr=baseline_lr)
     num_steps = 5
@@ -56,13 +56,13 @@ if __name__ == '__main__':
             baseline_total_loss = 0
 
             for x, t in train_dl:
-                optimizer.zero_grad()
-                baseline_optimizer.zero_grad()
-
                 x = x.float().unsqueeze(-1)
                 t = t.float().unsqueeze(-1)
 
-                y = pagnn(x, num_steps=num_steps).unsqueeze(-1)
+                optimizer.zero_grad()
+                baseline_optimizer.zero_grad()
+
+                y = pagnn(x, num_steps=num_steps)
                 baseline_y = linear_model(x)
 
                 loss = F.mse_loss(y, t)
@@ -91,7 +91,7 @@ if __name__ == '__main__':
                 x = x.float().unsqueeze(-1)
                 t = t.float().unsqueeze(-1)
 
-                y = pagnn(x, num_steps=num_steps).unsqueeze(-1)
+                y = pagnn(x, num_steps=num_steps)
                 baseline_y = linear_model(x)
 
                 loss = F.mse_loss(y, t)
