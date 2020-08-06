@@ -10,6 +10,7 @@
 ## Showcase:
 ![](figures/linear_regression.png)
 ![](figures/mv_linear_regression.png)
+![](figures/non_linear_regression.png)
 
 ## Datasets Credit:
 - Linear Regression: `datasets/linear_regression/` [source](https://www.kaggle.com/andonians/random-linear-regression)
