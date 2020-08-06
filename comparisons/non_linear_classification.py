@@ -3,6 +3,7 @@ import torch.nn.functional as F
 from torch.utils.data import TensorDataset, DataLoader
 
 from PAGNN.pagnn import PAGNN
+from PAGNN.utils.comparisons import FFNN, one_hot, normalize_inplace
 
 import numpy as np
 
@@ -14,28 +15,6 @@ import matplotlib.pyplot as plt
 import networkx as nx
 
 from sklearn.utils import shuffle
-
-
-class FFNN(torch.nn.Module):
-    def __init__(self, input_size, hidden_size, output_size):
-        super().__init__()
-
-        self.activation = torch.sigmoid
-        self.fc1 = torch.nn.Linear(input_size, hidden_size)
-        self.fc2 = torch.nn.Linear(hidden_size, output_size)
-
-    def forward(self, x):
-        x = self.activation(self.fc1(x))
-        x = self.fc2(x)
-        return x
-
-
-def one_hot(df, key):
-    return pd.concat([df, pd.get_dummies(df[key], prefix=key)], axis=1).drop(key, axis=1)
-
-
-def normalize_inplace(df, key):
-    df[key] = df[key] / np.linalg.norm(df[key])
 
 
 if __name__ == '__main__':
@@ -89,7 +68,7 @@ if __name__ == '__main__':
     test_dl = DataLoader(TensorDataset(test_X, test_T), batch_size=batch_size)
 
     pagnn_lr = 0.0001
-    baseline_lr = 0.00001
+    baseline_lr = 0.0001
     optimizer = torch.optim.Adam(pagnn.parameters(), lr=pagnn_lr)
     baseline_optimizer = torch.optim.Adam(linear_model.parameters(), lr=baseline_lr)
     num_steps = 5
@@ -108,6 +87,7 @@ if __name__ == '__main__':
 
                 for x, t in train_dl:
                     optimizer.zero_grad()
+                    baseline_optimizer.zero_grad()
 
                     x = x.float()
 
