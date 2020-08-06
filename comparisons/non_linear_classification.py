@@ -45,7 +45,7 @@ if __name__ == '__main__':
         np.random.seed(seed)
 
     # load data
-    df = pd.read_csv('datasets/non_linear_regression/iris.csv').dropna()
+    df = pd.read_csv('datasets/non_linear_classification/iris.csv').dropna()
     df = shuffle(df)
 
     # normalize data
@@ -178,5 +178,5 @@ if __name__ == '__main__':
     nx.draw(G, with_labels=True, node_color=color_map)
     plt.title('PAGNN architecture')
 
-    plt.savefig('figures/non_linear_regression.png', transparent=True)
+    plt.savefig('figures/non_linear_classification.png', transparent=True)
     plt.show()
