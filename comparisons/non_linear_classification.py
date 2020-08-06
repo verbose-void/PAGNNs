@@ -69,7 +69,7 @@ if __name__ == '__main__':
     print('number of classes:', C)
 
     # create models
-    pagnn = PAGNN(D + C + 5, D, C, initial_sparsity=0.5)
+    pagnn = PAGNN(D + C + 5, D, C, initial_sparsity=0.2)
     print(pagnn)
     linear_model = FFNN(D, 25, C) # torch.nn.Linear(D, C)
     print(linear_model)
@@ -97,66 +97,69 @@ if __name__ == '__main__':
     pagnn_history = {'train_loss': [], 'test_accuracy': []}
     baseline_history = {'train_loss': [], 'test_accuracy': []}
     
-    for epoch in range(1000):
-        pagnn.train()
-        linear_model.train()
+    try:
+        for epoch in range(1000):
+            pagnn.train()
+            linear_model.train()
 
-        with torch.enable_grad():
-            pagnn_total_loss = 0
-            baseline_total_loss = 0
+            with torch.enable_grad():
+                pagnn_total_loss = 0
+                baseline_total_loss = 0
 
-            for x, t in train_dl:
-                optimizer.zero_grad()
+                for x, t in train_dl:
+                    optimizer.zero_grad()
 
-                x = x.float()
+                    x = x.float()
 
-                y = pagnn(x, num_steps=num_steps).unsqueeze(0)
-                baseline_y = linear_model(x)
+                    y = pagnn(x, num_steps=num_steps).unsqueeze(0)
+                    baseline_y = linear_model(x)
 
-                loss = F.cross_entropy(y, t)
-                baseline_loss = F.cross_entropy(baseline_y, t)
-                pagnn_total_loss += loss.item()
-                baseline_total_loss += baseline_loss.item()
+                    loss = F.cross_entropy(y, t)
+                    baseline_loss = F.cross_entropy(baseline_y, t)
+                    pagnn_total_loss += loss.item()
+                    baseline_total_loss += baseline_loss.item()
 
-                loss.backward()
-                optimizer.step()
+                    loss.backward()
+                    optimizer.step()
 
-                baseline_loss.backward()
-                baseline_optimizer.step()
+                    baseline_loss.backward()
+                    baseline_optimizer.step()
 
-            pagnn_avg_loss = pagnn_total_loss / len(train_dl)
-            baseline_avg_loss = baseline_total_loss / len(train_dl)
-            print('[PAGNN] average loss for epoch %i: %f' % (epoch, pagnn_avg_loss))
-            print('[BASELINE] average loss for epoch %i: %f' % (epoch, baseline_avg_loss))
+                pagnn_avg_loss = pagnn_total_loss / len(train_dl)
+                baseline_avg_loss = baseline_total_loss / len(train_dl)
+                print('[PAGNN] average loss for epoch %i: %f' % (epoch, pagnn_avg_loss))
+                print('[BASELINE] average loss for epoch %i: %f' % (epoch, baseline_avg_loss))
 
-            pagnn_history['train_loss'].append(pagnn_avg_loss)
-            baseline_history['train_loss'].append(baseline_avg_loss)
+                pagnn_history['train_loss'].append(pagnn_avg_loss)
+                baseline_history['train_loss'].append(baseline_avg_loss)
 
-        pagnn.eval()
-        linear_model.eval()
-        with torch.no_grad():
-            total_correct = 0.0
-            baseline_total_correct = 0.0
-            for x, t in test_dl:
-                x = x.float()
+            pagnn.eval()
+            linear_model.eval()
+            with torch.no_grad():
+                total_correct = 0.0
+                baseline_total_correct = 0.0
+                for x, t in test_dl:
+                    x = x.float()
 
-                y = pagnn(x, num_steps=num_steps).unsqueeze(0)
-                baseline_y = linear_model(x)
+                    y = pagnn(x, num_steps=num_steps).unsqueeze(0)
+                    baseline_y = linear_model(x)
 
-                pred = torch.argmax(y, axis=1)
-                baseline_pred = torch.argmax(baseline_y, axis=1)
+                    pred = torch.argmax(y, axis=1)
+                    baseline_pred = torch.argmax(baseline_y, axis=1)
 
-                total_correct += torch.sum(pred == t).item()
-                baseline_total_correct += torch.sum(baseline_pred == t).item()
+                    total_correct += torch.sum(pred == t).item()
+                    baseline_total_correct += torch.sum(baseline_pred == t).item()
 
-            pagnn_accuracy = total_correct / len(test_dl.dataset)
-            baseline_accuracy = baseline_total_correct / len(test_dl.dataset)
+                pagnn_accuracy = total_correct / len(test_dl.dataset)
+                baseline_accuracy = baseline_total_correct / len(test_dl.dataset)
 
-            print('[PAGNN] testing accuracy:', pagnn_accuracy)
-            print('[BASELINE] testing accuracy:', baseline_accuracy)
+                print('[PAGNN] testing accuracy:', pagnn_accuracy)
+                print('[BASELINE] testing accuracy:', baseline_accuracy)
 
-            pagnn_history['test_accuracy'].append(pagnn_accuracy)
-            baseline_history['test_accuracy'].append(baseline_accuracy)
+                pagnn_history['test_accuracy'].append(pagnn_accuracy)
+                baseline_history['test_accuracy'].append(baseline_accuracy)
+    except KeyboardInterrupt:
+        print('early exit keyboard interrupt')
 
     fig = plt.figure(figsize=(16, 9))
     fig.suptitle('Non-Linear Classification - (PAGNN vs FFNN(4, 25, 3))', fontsize=24)
