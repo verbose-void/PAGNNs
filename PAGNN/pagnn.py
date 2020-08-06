@@ -50,51 +50,30 @@ def _is_valid_structure(W, num_output_neurons):
 
 
 class AdjacencyMatrix(nn.Module):
-    def __init__(self, n, input_neurons=0, output_neurons=0, sparsity=0, rule_based_initialization=False):
+    def __init__(self, n, input_neurons=0, output_neurons=0, sparsity=0, create_using=nx.DiGraph, graph_generator=None):
         super(AdjacencyMatrix, self).__init__()
 
         if sparsity < 0 or sparsity > 1:
             raise ValueError('sparsity must be on the closed interval [0, 1]. got %i.' % sparsity)
 
+        self.graph_generator = graph_generator
+        self.create_using = create_using
+        self.sparsity = sparsity
+
+        if self.graph_generator is not None and self.sparsity != 0:
+            raise Exception('sparsity must be 0 if using a graph_generator.')
+
         self.input_neurons = input_neurons
         self.output_neurons = output_neurons
         self.n = n
         self.state = None
-        self.rule_based_initialization = rule_based_initialization
-
-        self.sparsity = sparsity
-        if sparsity == 'max':
-            self.sparsity = self.max_sparsity 
-
-        if self.rule_based_initialization and sparsity > self.max_sparsity:
-            raise Exception('maximum allowed sparsity for a network with %i neurons is %s%%.' % (self.n, \
-                            str(self.max_sparsity*100)))
-
-        # initialize weights
 
         self.reset_parameters()
-
         self.zero_state()
-
-
-    @property
-    def max_sparsity(self):
-        num_elems = self.n * self.n
-
-        # need at least 1 non-sparse value per output neuron
-        max_sparse_elems = num_elems - self.output_neurons
-        # need at least 1 non-sparse value per inward/outward connection
-        max_sparse_elems -= self.n
-
-        return max_sparse_elems / num_elems
 
 
     @torch.no_grad()
     def reset_parameters(self, only_modify_hidden_weight=False):
-
-
-
-
         """
         rules for injecting sparsity:
         1. every neuron must have at least 1 OUTWARD connection (no OUTWARD neuron weight vector can be 100% sparse)
@@ -108,23 +87,7 @@ class AdjacencyMatrix(nn.Module):
           simply removed by reducing the number of allocated neurons.
         """
 
-        if self.rule_based_initialization:
-            # inject rule-based sparsity
-            self.weight = None
-            while (self.weight is None) or (not _is_valid_structure(self.weight, self.output_neurons)):
-                print('initializing weights')
-
-                # initialize with 0 sparsity
-                self.weight = nn.Parameter(torch.zeros((self.n, self.n)))
-                nn.init.kaiming_uniform_(self.weight, mode='fan_in', nonlinearity='relu')
-
-                # introduce random sparsity
-                _flat = self.weight.view(-1)
-                indices_pool = torch.randperm(len(_flat))
-                num_non_sparse_elems = min(len(indices_pool)-1, int(ceil(len(indices_pool)*self.sparsity)))
-                random_indices = indices_pool[:num_non_sparse_elems]
-                _flat[random_indices] = 0
-        else:
+        if self.graph_generator is None:
             self.weight = nn.Parameter(torch.ones((self.n, self.n)))
 
             if self.output_neurons > 0:
@@ -145,6 +108,18 @@ class AdjacencyMatrix(nn.Module):
             num_non_sparse_elems = min(len(indices_pool)-1, int(ceil(len(indices_pool)*self.sparsity)))
             random_indices = indices_pool[:num_non_sparse_elems]
             _flat[random_indices] = 0
+        else:
+            G = self.graph_generator(self.n, create_using=self.create_using)
+            adj_matrix = nx.linalg.graphmatrix.adjacency_matrix(G).todense()
+
+            # connect output neurons to themselves
+            for i in range(self.output_neurons):
+                idx = -(i+1)
+                adj_matrix[idx, idx] = 1
+
+            self.weight = nn.Parameter(torch.ones((self.n, self.n)))
+            nn.init.kaiming_uniform_(self.weight, mode='fan_in', nonlinearity='relu')
+            self.weight *= torch.tensor(adj_matrix)
 
     
     @torch.no_grad()
@@ -220,17 +195,20 @@ class AdjacencyMatrix(nn.Module):
 
 
 class PAGNN(nn.Module):
-    def __init__(self, num_neurons, input_neurons, output_neurons, initial_sparsity=0.9, freeze_sparsity_gradients=True):
+    def __init__(self, num_neurons, input_neurons, output_neurons, initial_sparsity=0, freeze_sparsity_gradients=True, \
+                 graph_generator=None, create_using=nx.DiGraph):
         super(PAGNN, self).__init__()
 
         if input_neurons + output_neurons > num_neurons:
             raise ValueError('number of allocated input & output neurons cannot add up to be greater than the number of total neurons. \
                               got %i (input) + %i (output) > %i (total).' % (input_neurons, output_neurons, num_neurons))
 
+        self.graph_generator = graph_generator
+        self.create_using = create_using
         self.n = num_neurons
         self.input_neurons = input_neurons
         self.output_neurons = output_neurons
-        self.structure_adj_matrix = AdjacencyMatrix(num_neurons, input_neurons=input_neurons, output_neurons=output_neurons, sparsity=initial_sparsity)
+        self.structure_adj_matrix = AdjacencyMatrix(num_neurons, input_neurons=input_neurons, output_neurons=output_neurons, sparsity=initial_sparsity, graph_generator=self.graph_generator, create_using=self.create_using)
 
         if freeze_sparsity_gradients:
             sam_weight = self.structure_adj_matrix.weight
