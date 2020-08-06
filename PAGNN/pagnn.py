@@ -130,22 +130,32 @@ class AdjacencyMatrix(nn.Module):
 
     @torch.no_grad()
     def load_input_neurons(self, x):
-        D = len(x[0]) # TODO batch
+        # TODO vectorize w.r.t batch dimension
+
+        N, D = x.shape
 
         if D != self.input_neurons:
             raise ValueError('dimensionality of input data must be the same as number of input neurons. D=%i expected %i.' % \
                              (D, self.input_neurons))
 
-        self.state = np.pad(x[0], (0, self.n-D))
-        self.state = (self.weight.T * self.state).T
+        self.state = np.hstack((x, np.zeros((N, self.n-D)))) # BATCH PADDING
+        
+        initial_state = torch.zeros((N, self.n, self.n))
+        for i, s in enumerate(self.state):
+            initial_state[i] = (self.weight.T * s).T
+        self.state = initial_state
 
 
     def extract_output_neurons(self):
-        Y = torch.zeros(self.output_neurons)
-        c = 0
-        for i in range(self.output_neurons, 0, -1):
-            Y[c] = self.state[-i, -i]
-            c += 1
+        # TODO vectorize w.r.t batch dimension
+        
+        N = self.state.shape[0] # BATCH SIZE
+        Y = torch.zeros((N, self.output_neurons))
+        for n in range(N):
+            c = 0
+            for i in range(self.output_neurons, 0, -1):
+                Y[n, c] = self.state[n, -i, -i]
+                c += 1
         return Y 
 
 
@@ -153,17 +163,37 @@ class AdjacencyMatrix(nn.Module):
         for _ in range(n):
             next_state = torch.zeros(self.state.shape)
 
-            for i in range(self.state.shape[0]):
-                # next_state += self.graph_weights * np.transpose([neuron]) # this method is MUCH slower
-                next_state = next_state + (self.weight.T * self.state[i])
+            # TODO vectorize w.r.t batch dimension
 
-            self.state = next_state.T
+            for n in range(self.state.shape[0]): # batch dimension
+                next_sample = torch.zeros(self.state.shape[1:])
+
+                for i in range(next_sample.shape[0]): # feature dimension
+                    # next_state += self.graph_weights * np.transpose([neuron]) # this method is MUCH slower
+                    next_sample = next_sample + (self.weight.T * self.state[n, i])
+
+                next_state[n] = next_sample.T
+
+            self.state = next_state
+
+            # EQUIVALENT UNBATCHED CODE
+            """
+            next_state = torch.zeros(self.state[0].shape)
+
+            for i in range(self.state[0].shape[0]):
+                # next_state += self.graph_weights * np.transpose([neuron]) # this method is MUCH slower
+                next_state = next_state + (self.weight.T * self.state[0][i])
+
+            # self.state = next_state.T
+            UNBATCHED_STATE = next_state.T
+            """
 
 
     def forward(self, x, num_steps=1):
         self.load_input_neurons(x)
         self.step(n=num_steps)
-        return self.extract_output_neurons()
+        y = self.extract_output_neurons()
+        return y
 
 
     def extra_repr(self):
