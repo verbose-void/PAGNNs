@@ -15,12 +15,12 @@ import networkx as nx
 
 
 if __name__ == '__main__':
-    seed = 666
+    seed = 667
     if seed is not None:
         torch.manual_seed(seed)
         np.random.seed(seed)
 
-    pagnn = PAGNN(5, 1, 1, initial_sparsity=0.5)
+    pagnn = PAGNN(5, 1, 1, initial_sparsity=0.1)
     print(pagnn)
 
     linear_model = torch.nn.Linear(1, 1)
