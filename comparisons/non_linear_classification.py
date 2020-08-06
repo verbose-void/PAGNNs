@@ -69,7 +69,7 @@ if __name__ == '__main__':
     print('number of classes:', C)
 
     # create models
-    pagnn = PAGNN(D + C + 5, D, C, initial_sparsity=0.2)
+    pagnn = PAGNN(D + C + 5, D, C, graph_generator=nx.generators.classic.complete_graph)
     print(pagnn)
     linear_model = FFNN(D, 25, C) # torch.nn.Linear(D, C)
     print(linear_model)
