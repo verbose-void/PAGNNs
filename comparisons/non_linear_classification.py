@@ -63,7 +63,7 @@ if __name__ == '__main__':
     train_T, test_T = T[:split], T[split:]
 
     # create data loaders
-    batch_size = 1
+    batch_size = 10
     train_dl = DataLoader(TensorDataset(train_X, train_T), batch_size=batch_size)
     test_dl = DataLoader(TensorDataset(test_X, test_T), batch_size=batch_size)
 
@@ -91,7 +91,7 @@ if __name__ == '__main__':
 
                     x = x.float()
 
-                    y = pagnn(x, num_steps=num_steps).unsqueeze(0)
+                    y = pagnn(x, num_steps=num_steps)
                     baseline_y = linear_model(x)
 
                     loss = F.cross_entropy(y, t)
@@ -121,7 +121,7 @@ if __name__ == '__main__':
                 for x, t in test_dl:
                     x = x.float()
 
-                    y = pagnn(x, num_steps=num_steps).unsqueeze(0)
+                    y = pagnn(x, num_steps=num_steps)
                     baseline_y = linear_model(x)
 
                     pred = torch.argmax(y, axis=1)
