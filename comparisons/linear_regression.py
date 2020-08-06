@@ -15,12 +15,12 @@ import networkx as nx
 
 
 if __name__ == '__main__':
-    seed = 667
+    seed = 666
     if seed is not None:
         torch.manual_seed(seed)
         np.random.seed(seed)
 
-    pagnn = PAGNN(5, 1, 1, initial_sparsity=0.1)
+    pagnn = PAGNN(5, 1, 1, graph_generator=nx.generators.classic.complete_graph)
     print(pagnn)
 
     linear_model = torch.nn.Linear(1, 1)
@@ -42,7 +42,7 @@ if __name__ == '__main__':
     test_dl = DataLoader(TensorDataset(test_x, test_y), batch_size=batch_size)
 
     pagnn_lr = 0.001
-    baseline_lr = 0.0001
+    baseline_lr = 0.00005
     optimizer = torch.optim.Adam(pagnn.parameters(), lr=pagnn_lr)
     baseline_optimizer = torch.optim.Adam(linear_model.parameters(), lr=baseline_lr)
     num_steps = 5
