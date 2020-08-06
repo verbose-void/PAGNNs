@@ -61,6 +61,7 @@ if __name__ == '__main__':
     filter_col = [col for col in df if col.startswith('Species')]
     targets = df[filter_col]
     df = df.drop(filter_col, axis=1)
+    df = df.drop('Id', axis=1)
 
     D = len(df.columns)
     C = len(targets.columns)
@@ -88,9 +89,9 @@ if __name__ == '__main__':
     test_dl = DataLoader(TensorDataset(test_X, test_T), batch_size=batch_size)
 
     pagnn_lr = 0.0001
-    baseline_lr = 0.01
+    baseline_lr = 0.00001
     optimizer = torch.optim.Adam(pagnn.parameters(), lr=pagnn_lr)
-    baseline_optimizer = torch.optim.SGD(linear_model.parameters(), lr=baseline_lr)
+    baseline_optimizer = torch.optim.Adam(linear_model.parameters(), lr=baseline_lr)
     num_steps = 5
 
     pagnn_history = {'train_loss': [], 'test_accuracy': []}
@@ -158,7 +159,7 @@ if __name__ == '__main__':
             baseline_history['test_accuracy'].append(baseline_accuracy)
 
     fig = plt.figure(figsize=(16, 9))
-    fig.suptitle('Non-Linear Classification - (PAGNN vs torch.nn.Linear)', fontsize=24)
+    fig.suptitle('Non-Linear Classification - (PAGNN vs FFNN(4, 25, 3))', fontsize=24)
 
     plt.subplot(221)
     plt.plot(pagnn_history['train_loss'], label='PAGNN (lr: %f)' % pagnn_lr)
