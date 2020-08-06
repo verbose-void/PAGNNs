@@ -18,8 +18,39 @@ def _create_sparsity_freeze_function(weight):
     return _freeze_sparsity
 
 
+def _is_valid_structure(W, num_output_neurons):
+    valid = True
+    abs_W = torch.abs(W)
+    num_neurons = abs_W.shape[0]
+
+    for neuron_idx in range(num_neurons):
+        is_output_neuron = neuron_idx >= (num_neurons - num_output_neurons)
+
+        neuron_abs_W = abs_W[neuron_idx]
+        inward_neuron_abs_W = abs_W[:, neuron_idx]
+
+        if torch.sum(neuron_abs_W != 0) <= 0:
+            # print('neuron %i has no outward connections.' % neuron_idx)
+            valid = False
+            break
+
+        required_non_sparse_elems = 1 if is_output_neuron else 0
+        if torch.sum(inward_neuron_abs_W != 0) <= required_non_sparse_elems:
+            # print('neuron %i has no inward connections.' % neuron_idx)
+            valid = False
+            break
+
+        if is_output_neuron:
+            # make sure this neuron has a non-sparse self-connection
+            if neuron_abs_W[neuron_idx] <= 0: # self connection weight
+                valid = False
+                break
+
+    return valid
+
+
 class AdjacencyMatrix(nn.Module):
-    def __init__(self, n, input_neurons=0, output_neurons=0, sparsity=0):
+    def __init__(self, n, input_neurons=0, output_neurons=0, sparsity=0, rule_based_initialization=False):
         super(AdjacencyMatrix, self).__init__()
 
         if sparsity < 0 or sparsity > 1:
@@ -29,48 +60,93 @@ class AdjacencyMatrix(nn.Module):
         self.output_neurons = output_neurons
         self.n = n
         self.state = None
+        self.rule_based_initialization = rule_based_initialization
+
         self.sparsity = sparsity
+        if sparsity == 'max':
+            self.sparsity = self.max_sparsity 
+
+        if self.rule_based_initialization and sparsity > self.max_sparsity:
+            raise Exception('maximum allowed sparsity for a network with %i neurons is %s%%.' % (self.n, \
+                            str(self.max_sparsity*100)))
 
         # initialize weights
-        self.weight = nn.Parameter(torch.ones((n, n)))
+
         self.reset_parameters()
 
         self.zero_state()
 
 
+    @property
+    def max_sparsity(self):
+        num_elems = self.n * self.n
+
+        # need at least 1 non-sparse value per output neuron
+        max_sparse_elems = num_elems - self.output_neurons
+        # need at least 1 non-sparse value per inward/outward connection
+        max_sparse_elems -= self.n
+
+        return max_sparse_elems / num_elems
+
+
     @torch.no_grad()
     def reset_parameters(self, only_modify_hidden_weight=False):
-        if self.output_neurons > 0:
-            self.hidden_weight = self.weight[self.input_neurons:-self.output_neurons]
-        else:
-            self.hidden_weight = self.weight[self.input_neurons:]
 
-        weights_to_initialize = self.weight
-        if only_modify_hidden_weight:
-            weights_to_initialize = self.hidden_weight
-            
-        # uniformly initialize weights
-        nn.init.kaiming_uniform_(weights_to_initialize, mode='fan_in', nonlinearity='relu')
+
+
 
         """
         rules for injecting sparsity:
-
         1. every neuron must have at least 1 OUTWARD connection (no OUTWARD neuron weight vector can be 100% sparse)
         2. every neuron must have at least 1 INWARD connection (no INWARD neuron weight vector can be 100% sparse)
-        (note on 1 & 2: essentially this means that each ROW/COLUMN magnitudal summation MUST be > 0)
+        3. every OUTPUT neuron must have it's self-connection be non-sparse. in other words, every output neuron MUST be
+           connected to itself.
 
-        the reason for rules 1 & 2 is if you had a 100% sparse neuron, it's a source of informational death and can be simply
-        removed by reducing the number of allocated neurons.
+        notes:
+        - note on 1 & 2: essentially this means that each ROW/COLUMN magnitudal summation MUST be > 0
+        - the reason for rules 1 & 2 is if you had a 100% sparse neuron, it's a source of informational death and can be 
+          simply removed by reducing the number of allocated neurons.
         """
 
-        # inject random sparsity
-        _flat = weights_to_initialize.view(-1)
-        indices_pool = torch.randperm(len(_flat))
-        num_non_sparse_elems = min(len(indices_pool)-1, int(ceil(len(indices_pool)*self.sparsity)))
-        random_indices = indices_pool[:num_non_sparse_elems]
-        _flat[random_indices] = 0
+        if self.rule_based_initialization:
+            # inject rule-based sparsity
+            self.weight = None
+            while (self.weight is None) or (not _is_valid_structure(self.weight, self.output_neurons)):
+                print('initializing weights')
 
+                # initialize with 0 sparsity
+                self.weight = nn.Parameter(torch.zeros((self.n, self.n)))
+                nn.init.kaiming_uniform_(self.weight, mode='fan_in', nonlinearity='relu')
 
+                # introduce random sparsity
+                _flat = self.weight.view(-1)
+                indices_pool = torch.randperm(len(_flat))
+                num_non_sparse_elems = min(len(indices_pool)-1, int(ceil(len(indices_pool)*self.sparsity)))
+                random_indices = indices_pool[:num_non_sparse_elems]
+                _flat[random_indices] = 0
+        else:
+            self.weight = nn.Parameter(torch.ones((self.n, self.n)))
+
+            if self.output_neurons > 0:
+                self.hidden_weight = self.weight[self.input_neurons:-self.output_neurons]
+            else:
+                self.hidden_weight = self.weight[self.input_neurons:]
+
+            weights_to_initialize = self.weight
+            if only_modify_hidden_weight:
+                weights_to_initialize = self.hidden_weight
+                
+            # uniformly initialize weights
+            nn.init.kaiming_uniform_(weights_to_initialize, mode='fan_in', nonlinearity='relu')
+
+            # inject random sparsity
+            _flat = weights_to_initialize.view(-1)
+            indices_pool = torch.randperm(len(_flat))
+            num_non_sparse_elems = min(len(indices_pool)-1, int(ceil(len(indices_pool)*self.sparsity)))
+            random_indices = indices_pool[:num_non_sparse_elems]
+            _flat[random_indices] = 0
+
+    
     @torch.no_grad()
     def zero_state(self):
         if self.state is None:
