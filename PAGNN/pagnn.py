@@ -132,11 +132,11 @@ class AdjacencyMatrix(nn.Module):
             if i < self.input_neurons:
                 color_map.append('green')
 
-            # "hidden" neurons
+            # "output" neurons
             elif i >= (self.n - self.output_neurons):
                 color_map.append('blue')
 
-            # "output" neurons
+            # "hidden" neurons
             else:
                 color_map.append('gray')
 
