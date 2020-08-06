@@ -42,7 +42,7 @@ if __name__ == '__main__':
     test_dl = DataLoader(TensorDataset(test_x, test_y), batch_size=batch_size)
 
     pagnn_lr = 0.001
-    baseline_lr = 0.00005
+    baseline_lr = 0.001
     optimizer = torch.optim.Adam(pagnn.parameters(), lr=pagnn_lr)
     baseline_optimizer = torch.optim.Adam(linear_model.parameters(), lr=baseline_lr)
     num_steps = 5
@@ -57,6 +57,7 @@ if __name__ == '__main__':
 
             for x, t in train_dl:
                 optimizer.zero_grad()
+                baseline_optimizer.zero_grad()
 
                 x = x.float().unsqueeze(-1)
                 t = t.float().unsqueeze(-1)
