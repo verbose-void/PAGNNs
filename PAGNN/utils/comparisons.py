@@ -56,73 +56,60 @@ def get_dataloaders(data_tensors, batch_size):
     return train_dl, test_dl
 
 
-def compare(model_dicts, epochs, criterion=criterion):
+def compare(model_dicts, train_dl, test_dl, epochs, criterion):
     try:
         for model_dict in model_dicts:
             model_dict['train_history'] = []
             model_dict['test_history'] = []
 
         for epoch in range(epochs):
-            # set all to train mode
+            print('epoch', epoch)
+
             for model_dict in model_dicts:
-                model_dict['model'].train()
+                model = model_dict['model']
+                model_name = model_dict['name']
+                optimizer = model_dict['optimizer']
 
-            with torch.enable_grad():
-                for model_dict in model_dicts:
-                    model_dict['total_loss'] = 0
+                with torch.enable_grad():
+                    model.train()
+                    total_loss = 0
 
-                for x, t in train_dl:
-                    for model_dict in model_dicts:
-                        model_dict['optimizer'].zero_grad()
+                    # do the training epoch
+                    for x, t in train_dl:
+                        optimizer.zero_grad()
 
                         if 'num_steps' in model_dict:
-                            y = model_dict['model'](x, num_steps=num_steps).unsqueeze(0)
+                            y = model(x, num_steps=model_dict['num_steps']).unsqueeze(0)
                         else:
-                            y = model_dict['model'](x)
+                            y = model(x)
 
                         loss = criterion(y, t)
-                        model_dict['total_loss'] += loss.item()
+                        total_loss += loss.item()
 
-                    loss.backward()
-                    optimizer.step()
+                        loss.backward()
+                        optimizer.step()
 
-                    baseline_loss.backward()
-                    baseline_optimizer.step()
+                    avg_loss = total_loss / len(train_dl)
+                    print('[%s] training loss: %f' % (model_name, avg_loss))
+                    model_dict['train_history'].append(avg_loss)
 
-                pagnn_avg_loss = pagnn_total_loss / len(train_dl)
-                baseline_avg_loss = baseline_total_loss / len(train_dl)
-                print('[PAGNN] average loss for epoch %i: %f' % (epoch, pagnn_avg_loss))
-                print('[BASELINE] average loss for epoch %i: %f' % (epoch, baseline_avg_loss))
 
-                pagnn_history['train_loss'].append(pagnn_avg_loss)
-                baseline_history['train_loss'].append(baseline_avg_loss)
+                model.eval()
+                with torch.no_grad():
+                    total_correct = 0.0
 
-            # set all to eval mode
-            for model_dict in model_dicts:
-                model_dict['model'].eval()
+                    for x, t in test_dl:
+                        if 'num_steps' in model_dict:
+                            y = model(x, num_steps=model_dict['num_steps']).unsqueeze(0)
+                        else:
+                            y = model(x)
 
-            with torch.no_grad():
-                total_correct = 0.0
-                baseline_total_correct = 0.0
-                for x, t in test_dl:
-                    x = x.float()
+                        pred = torch.argmax(y, axis=1)
+                        total_correct += torch.sum(pred == t).item()
 
-                    y = pagnn(x, num_steps=num_steps).unsqueeze(0)
-                    baseline_y = linear_model(x)
+                    accuracy = total_correct / len(test_dl.dataset)
+                    print('[%s] testing accuracy:', accuracy)
+                    model_dict['test_history'].append(accuracy)
 
-                    pred = torch.argmax(y, axis=1)
-                    baseline_pred = torch.argmax(baseline_y, axis=1)
-
-                    total_correct += torch.sum(pred == t).item()
-                    baseline_total_correct += torch.sum(baseline_pred == t).item()
-
-                pagnn_accuracy = total_correct / len(test_dl.dataset)
-                baseline_accuracy = baseline_total_correct / len(test_dl.dataset)
-
-                print('[PAGNN] testing accuracy:', pagnn_accuracy)
-                print('[BASELINE] testing accuracy:', baseline_accuracy)
-
-                pagnn_history['test_accuracy'].append(pagnn_accuracy)
-                baseline_history['test_accuracy'].append(baseline_accuracy)
     except KeyboardInterrupt:
         print('early exit keyboard interrupt')
