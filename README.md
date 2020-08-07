@@ -21,4 +21,4 @@
 - Multi-Variate Linear Regression: `datasets/mv_linear_regression/` [source](https://www.kaggle.com/mirichoi0218/insurance)
 - Non-Linear Classification: `datasets/non_linear_classification/` [source](https://www.kaggle.com/uciml/iris)
 - Mushroom Classification (not linearly separable): `datasets/mushroom_classification/` [source](https://www.kaggle.com/uciml/mushroom-classification)
-- Yelp Sentiment Classification (not linearly separable): `datasets/yelp_dataset` [source](https://www.yelp.com/dataset)
+- Yelp Sentiment Classification (not linearly separable): `datasets/yelp/` [source](https://www.yelp.com/dataset)
