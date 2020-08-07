@@ -129,7 +129,7 @@ if __name__ == '__main__':
     print(w2v)
 
     """LOAD AND PREPROCESS DATA"""
-    df = pd.read_csv('datasets/yelp_dataset/output_reviews_top.csv')
+    df = pd.read_csv('datasets/yelp/output_reviews_top.csv')
     df['sentiment'] = [map_sentiment(x) for x in df['stars']]
     df = get_top_data(df, top_n=5000)
     # Tokenize the text column to get the new column 'tokenized_text'
@@ -195,7 +195,7 @@ if __name__ == '__main__':
                 total_loss += loss.item()
 
                 cnn_loss = F.cross_entropy(cnn_y, t)
-                cnn_total_loss += loss.item()
+                cnn_total_loss += cnn_loss.item()
 
                 loss.backward()
                 optimizer.step()
