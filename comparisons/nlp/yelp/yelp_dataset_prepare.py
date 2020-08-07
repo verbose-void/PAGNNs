@@ -18,8 +18,8 @@ Function to convert yelp.json into a smaller csv
 From: https://towardsdatascience.com/sentiment-classification-using-cnn-in-pytorch-fba3c6840430
 """
 if GENERATE_OUTPUT_CSV:
-    INPUT_FOLDER = 'datasets/yelp_dataset'
-    OUTPUT_FOLDER = 'datasets/yelp_dataset'
+    INPUT_FOLDER = 'datasets/yelp'
+    OUTPUT_FOLDER = 'datasets/yelp'
     def load_yelp_orig_data():
         PATH_TO_YELP_REVIEWS = INPUT_FOLDER + '/yelp_academic_dataset_review.json'
         num_bytes = 100000000
@@ -55,7 +55,7 @@ def get_top_data(top_data_df, top_n=5000):
 
 
 if __name__ == '__main__':
-    df = pd.read_csv('datasets/yelp_dataset/output_reviews_top.csv')
+    df = pd.read_csv('datasets/yelp/output_reviews_top.csv')
 
     df['sentiment'] = [map_sentiment(x) for x in df['stars']]
     df = get_top_data(df, top_n=5000)
@@ -74,7 +74,7 @@ if __name__ == '__main__':
     porter_stemmer = PorterStemmer()
     # Get the stemmed_tokens
     df['stemmed_tokens'] = [[porter_stemmer.stem(word) for word in tokens] for tokens in df['tokenized_text'] ]
-    df.to_csv('datasets/yelp_dataset/reviews.csv')
+    df.to_csv('datasets/yelp/reviews.csv')
     # print(df['stemmed_tokens'].head(10))
 
     vec_size = 10
