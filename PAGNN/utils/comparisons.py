@@ -5,6 +5,8 @@ import numpy as np
 
 import pandas as pd
 
+from tqdm import tqdm
+
 
 class FFNN(torch.nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
@@ -36,9 +38,9 @@ def separate_targets(df, target_key):
     return df, targets
 
 
-def get_train_and_test(df, targets, train_perc):
-    X = torch.tensor(df.to_numpy())
-    T = torch.tensor(targets.to_numpy())
+def get_train_and_test(df, targets, train_perc, dtype=torch.float):
+    X = torch.tensor(df.to_numpy(), dtype=dtype)
+    T = torch.tensor(targets.to_numpy(), dtype=dtype)
     T = torch.argmax(T, dim=1)
     split = int(train_perc * X.shape[0])
     train_X, test_X = X[:split], X[split:]
@@ -56,7 +58,7 @@ def get_dataloaders(data_tensors, batch_size):
     return train_dl, test_dl
 
 
-def compare(model_dicts, train_dl, test_dl, epochs, criterion):
+def compare(model_dicts, train_dl, test_dl, epochs, criterion, use_tqdm=True, test_accuracy=False):
     try:
         for model_dict in model_dicts:
             model_dict['train_history'] = []
@@ -75,11 +77,15 @@ def compare(model_dicts, train_dl, test_dl, epochs, criterion):
                     total_loss = 0
 
                     # do the training epoch
-                    for x, t in train_dl:
+                    iterator = train_dl
+                    if use_tqdm:
+                        iterator = tqdm(iterator, desc='[train] %s' % (model_name), total=len(iterator))
+
+                    for x, t in iterator:
                         optimizer.zero_grad()
 
                         if 'num_steps' in model_dict:
-                            y = model(x, num_steps=model_dict['num_steps']).unsqueeze(0)
+                            y = model(x, num_steps=model_dict['num_steps'])
                         else:
                             y = model(x)
 
@@ -96,20 +102,33 @@ def compare(model_dicts, train_dl, test_dl, epochs, criterion):
 
                 model.eval()
                 with torch.no_grad():
-                    total_correct = 0.0
+                    total_correct = 0
+                    total_loss = 0
 
-                    for x, t in test_dl:
+                    iterator = test_dl
+                    if use_tqdm:
+                        iterator = tqdm(iterator, desc='[test] %s' % (model_name), total=len(iterator))
+
+                    for x, t in iterator:
                         if 'num_steps' in model_dict:
-                            y = model(x, num_steps=model_dict['num_steps']).unsqueeze(0)
+                            y = model(x, num_steps=model_dict['num_steps'])
                         else:
                             y = model(x)
 
-                        pred = torch.argmax(y, axis=1)
-                        total_correct += torch.sum(pred == t).item()
+                        if test_accuracy:
+                            pred = torch.argmax(y, axis=1)
+                            total_correct += torch.sum(pred == t).item()
+                        else:
+                            total_loss += criterion(y, t).item()
 
-                    accuracy = total_correct / len(test_dl.dataset)
-                    print('[%s] testing accuracy:', accuracy)
-                    model_dict['test_history'].append(accuracy)
+                    if test_accuracy:
+                        accuracy = total_correct / len(test_dl.dataset)
+                        print('[%s] testing accuracy:' % model_name, accuracy)
+                        model_dict['test_history'].append(accuracy)
+                    else:
+                        avg_loss = total_loss / len(test_dl)
+                        print('[%s] testing loss: %f' % (model_name, avg_loss))
+                        model_dict['test_history'].append(avg_loss)
 
     except KeyboardInterrupt:
         print('early exit keyboard interrupt')

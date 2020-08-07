@@ -8,6 +8,8 @@ from PAGNN.utils.comparisons import FFNN, one_hot, separate_targets, get_train_a
 
 import networkx as nx
 
+import matplotlib.pyplot as plt
+
 
 if __name__ == '__main__':
     df = pd.read_csv('datasets/mushroom_classification/mushrooms.csv')
@@ -39,10 +41,10 @@ if __name__ == '__main__':
 
     df, targets = separate_targets(df, 'class')
     train_perc = 0.8
-    data_tensors = get_train_and_test(df, targets, train_perc)
+    data_tensors = get_train_and_test(df, targets, train_perc, dtype=torch.float)
     (train_X, train_T), (test_X, test_T) = data_tensors
 
-    batch_size = 1
+    batch_size = 10
     train_dl, test_dl = get_dataloaders(data_tensors, batch_size)
 
     D = train_X.shape[1]
@@ -68,6 +70,32 @@ if __name__ == '__main__':
         'optimizer': torch.optim.Adam(ffnn_model.parameters(), lr=ffnn_lr),
     }
 
+    print('pagnn num params:', sum(p.numel() for p in pagnn_model.parameters()))
+    print('ffnn num params:', sum(p.numel() for p in ffnn_model.parameters()))
+
     criterion = F.cross_entropy
     epochs = 1
-    compare((pagnn, ffnn), train_dl, test_dl, epochs, criterion)
+    compare((ffnn, pagnn), train_dl, test_dl, epochs, criterion, test_accuracy=True)
+    
+    fig = plt.figure(figsize=(16, 9))
+    fig.suptitle('Mushroom Classification - (PAGNN vs FFNN)', fontsize=24)
+
+    plt.subplot(221)
+    plt.plot(pagnn['train_history'], label='PAGNN (lr: %f)' % pagnn_lr)
+    plt.plot(ffnn['train_history'], label='FFNN (lr: %f)' % ffnn_lr)
+    plt.legend()
+    plt.title('train loss')
+
+    plt.subplot(222)
+    plt.plot(pagnn_history['test_history'], label='PAGNN')
+    plt.plot(baseline_history['test_history'], label='FFNN')
+    plt.legend()
+    plt.title('test accuracy')
+
+    plt.subplot(212)
+    G, color_map = pagnn.get_networkx_graph(return_color_map=True)
+    nx.draw(G, with_labels=True, node_color=color_map)
+    plt.title('PAGNN architecture')
+
+    plt.savefig('figures/mushroom_classification.png', transparent=True)
+    plt.show()
