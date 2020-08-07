@@ -63,7 +63,7 @@ if __name__ == '__main__':
     }
 
     ffnn_lr = 0.0001
-    ffnn_model = FFNN(D, 25, C)
+    ffnn_model = FFNN(D, D, C)
     ffnn = {
         'name': 'FFNN',
         'model': ffnn_model,
@@ -74,7 +74,7 @@ if __name__ == '__main__':
     print('ffnn num params:', sum(p.numel() for p in ffnn_model.parameters()))
 
     criterion = F.cross_entropy
-    epochs = 1
+    epochs = 10
     compare((ffnn, pagnn), train_dl, test_dl, epochs, criterion, test_accuracy=True)
     
     fig = plt.figure(figsize=(16, 9))
@@ -87,13 +87,14 @@ if __name__ == '__main__':
     plt.title('train loss')
 
     plt.subplot(222)
-    plt.plot(pagnn_history['test_history'], label='PAGNN')
-    plt.plot(baseline_history['test_history'], label='FFNN')
+    plt.plot(pagnn['test_history'], label='PAGNN')
+    plt.plot(ffnn['test_history'], label='FFNN')
     plt.legend()
     plt.title('test accuracy')
 
     plt.subplot(212)
-    G, color_map = pagnn.get_networkx_graph(return_color_map=True)
+    print('creating graph...')
+    G, color_map = pagnn['model'].get_networkx_graph(return_color_map=True)
     nx.draw(G, with_labels=True, node_color=color_map)
     plt.title('PAGNN architecture')
 
