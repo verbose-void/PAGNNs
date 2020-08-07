@@ -189,9 +189,22 @@ class AdjacencyMatrix(nn.Module):
             """
 
 
-    def forward(self, x, num_steps=1):
-        self.load_input_neurons(x)
-        self.step(n=num_steps)
+    def forward(self, x, num_steps=1, use_sequence=False):
+        if use_sequence:
+            # feed features one by one into a single input neuron
+            if self.input_neurons != 1:
+                raise NotImplemented('multi-neuron feeding not supported yet')
+
+            for d in range(x.shape[1]): # feature dimension
+                tx = x[:, d].unsqueeze(-1)
+                self.load_input_neurons(tx)
+                self.step(n=num_steps)
+
+        else:
+            # load all features into the input neurons simultaneously
+            self.load_input_neurons(x)
+            self.step(n=num_steps)
+
         y = self.extract_output_neurons()
         return y
 
@@ -245,8 +258,8 @@ class PAGNN(nn.Module):
             self.structure_adj_matrix.weight.register_hook(_create_sparsity_freeze_function(sam_weight))
     
 
-    def forward(self, x, num_steps=1):
-        y = self.structure_adj_matrix(x, num_steps=num_steps)
+    def forward(self, x, num_steps=1, use_sequence=False):
+        y = self.structure_adj_matrix(x, num_steps=num_steps, use_sequence=use_sequence)
         return y
 
 
