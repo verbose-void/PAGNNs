@@ -74,7 +74,7 @@ if __name__ == '__main__':
     print('ffnn num params:', sum(p.numel() for p in ffnn_model.parameters()))
 
     criterion = F.cross_entropy
-    epochs = 10
+    epochs = 25
     compare((ffnn, pagnn), train_dl, test_dl, epochs, criterion, test_accuracy=True)
     
     fig = plt.figure(figsize=(16, 9))
