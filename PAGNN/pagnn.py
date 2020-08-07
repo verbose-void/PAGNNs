@@ -159,7 +159,7 @@ class AdjacencyMatrix(nn.Module):
         return Y 
 
 
-    def step(self, n=1):
+    def step(self, n=1, energy_scalar=1):
         for _ in range(n):
             next_state = torch.zeros(self.state.shape)
 
@@ -174,7 +174,7 @@ class AdjacencyMatrix(nn.Module):
 
                 next_state[n] = next_sample.T
 
-            self.state = next_state
+            self.state = next_state * energy_scalar
 
             # EQUIVALENT UNBATCHED CODE
             """
@@ -189,7 +189,7 @@ class AdjacencyMatrix(nn.Module):
             """
 
 
-    def forward(self, x, num_steps=1, use_sequence=False):
+    def forward(self, x, num_steps=1, use_sequence=False, energy_scalar=1):
         if use_sequence:
             # feed features one by one into a single input neuron
             if self.input_neurons != 1:
@@ -198,12 +198,12 @@ class AdjacencyMatrix(nn.Module):
             for d in range(x.shape[1]): # feature dimension
                 tx = x[:, d].unsqueeze(-1)
                 self.load_input_neurons(tx)
-                self.step(n=num_steps)
+                self.step(n=num_steps, energy_scalar=energy_scalar)
 
         else:
             # load all features into the input neurons simultaneously
             self.load_input_neurons(x)
-            self.step(n=num_steps)
+            self.step(n=num_steps, energy_scalar=energy_scalar)
 
         y = self.extract_output_neurons()
         return y
@@ -258,8 +258,8 @@ class PAGNN(nn.Module):
             self.structure_adj_matrix.weight.register_hook(_create_sparsity_freeze_function(sam_weight))
     
 
-    def forward(self, x, num_steps=1, use_sequence=False):
-        y = self.structure_adj_matrix(x, num_steps=num_steps, use_sequence=use_sequence)
+    def forward(self, x, num_steps=1, use_sequence=False, energy_scalar=1):
+        y = self.structure_adj_matrix(x, num_steps=num_steps, use_sequence=use_sequence, energy_scalar=energy_scalar)
         return y
 
 
