@@ -19,6 +19,10 @@ import networkx as nx
 
 from tqdm import tqdm
 
+import matplotlib.pyplot as plt
+
+import numpy as np
+
 
 def map_sentiment(stars_received):
     if stars_received <= 2:
@@ -125,6 +129,11 @@ class CnnTextClassifier(nn.Module):
 
 
 if __name__ == '__main__':
+    seed = 666
+    if seed is not None:
+        torch.manual_seed(seed)
+        np.random.seed(seed)
+
     w2v = Word2Vec.load('word2vec/word2vec.model')
     print(w2v)
 
@@ -160,7 +169,11 @@ if __name__ == '__main__':
     cnn_optimizer = torch.optim.Adam(cnn.parameters(), lr=cnn_lr)
     padding_idx = cnn.w2vmodel.wv.vocab['pad'].index
 
-    for epoch in range(1):
+    pagnn_history = {'train_loss': [], 'test_accuracy': []}
+    cnn_history = {'train_loss': [], 'test_accuracy': []}
+
+    epochs = 30
+    for epoch in range(epochs):
         print('epoch', epoch)
         # TRAIN
         pagnn.train()
@@ -209,6 +222,9 @@ if __name__ == '__main__':
         print('[PAGNN] train loss: %f' % (avg_loss))
         print('[CNN] train loss: %f' % (cnn_avg_loss))
 
+        pagnn_history['train_loss'].append(avg_loss)
+        cnn_history['train_loss'].append(cnn_avg_loss)
+
         # EVAL
         pagnn.eval()
         cnn.eval()
@@ -243,3 +259,29 @@ if __name__ == '__main__':
         cnn_accuracy = cnn_total_correct / len(X_test)
         print('[PAGNN] test accuracy:', accuracy)
         print('[CNN] test accuracy:', cnn_accuracy)
+
+        pagnn_history['test_accuracy'].append(accuracy)
+        cnn_history['test_accuracy'].append(cnn_accuracy)
+
+    fig = plt.figure(figsize=(16, 9))
+    fig.suptitle('Yelp Review Sentiment Classification - (PAGNN vs CNN)', fontsize=24)
+
+    plt.subplot(221)
+    plt.plot(pagnn_history['train_loss'], label='PAGNN (lr: %f)' % lr)
+    plt.plot(cnn_history['train_loss'], label='CNN (lr: %f)' % cnn_lr)
+    plt.legend()
+    plt.title('train loss')
+
+    plt.subplot(222)
+    plt.plot(pagnn_history['test_accuracy'], label='PAGNN')
+    plt.plot(cnn_history['test_accuracy'], label='CNN')
+    plt.legend()
+    plt.title('test accuracy')
+
+    plt.subplot(212)
+    G, color_map = pagnn.get_networkx_graph(return_color_map=True)
+    nx.draw(G, with_labels=True, node_color=color_map)
+    plt.title('PAGNN architecture')
+
+    plt.savefig('figures/yelp_review_classification.png', transparent=True)
+    plt.show()
