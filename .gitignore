@@ -3,3 +3,4 @@ __pycache__/
 *.pkl
 pagnn_env/
 *.egg-info/
+word2vec/
