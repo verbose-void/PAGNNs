@@ -8,10 +8,13 @@
 5. `pip install -e .`
 
 ## Showcase:
+### Feature-Fed Comparisons:
 ![](figures/linear_regression.png)
 ![](figures/mv_linear_regression.png)
 ![](figures/non_linear_classification.png)
 ![](figures/mushroom_classification.png)
+### Sequence-Fed Comparisons:
+![](figures/seq_mv_linear_regression.png)
 
 ## Datasets Credit:
 - Linear Regression: `datasets/linear_regression/` [source](https://www.kaggle.com/andonians/random-linear-regression)
