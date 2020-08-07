@@ -52,6 +52,9 @@ if __name__ == '__main__':
     print(pagnn)
     linear_model = FFNN(D, 25, C) # torch.nn.Linear(D, C)
     print(linear_model)
+    
+    print('pagnn num params:', sum(p.numel() for p in pagnn.parameters()))
+    print('ffnn num params:', sum(p.numel() for p in linear_model.parameters()))
 
     # split dataset into train & test
     X = torch.tensor(df.to_numpy())
