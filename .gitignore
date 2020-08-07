@@ -5,3 +5,6 @@ __pycache__/
 pagnn_env/
 *.egg-info/
 word2vec/
+*.pdf
+*.json
+*.tar
