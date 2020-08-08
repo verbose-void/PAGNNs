@@ -138,9 +138,10 @@ class AdjacencyMatrix(nn.Module):
             raise ValueError('dimensionality of input data must be the same as number of input neurons. D=%i expected %i.' % \
                              (D, self.input_neurons))
 
-        self.state = np.hstack((x, np.zeros((N, self.n-D)))) # BATCH PADDING
+        device = self.weight.device
+        self.state = torch.cat((x, torch.zeros((N, self.n-D), device=device)), dim=1) # BATCH PADDING
         
-        initial_state = torch.zeros((N, self.n, self.n))
+        initial_state = torch.zeros((N, self.n, self.n), device=device)
         for i, s in enumerate(self.state):
             initial_state[i] = (self.weight.T * s).T
         self.state = initial_state
@@ -148,9 +149,10 @@ class AdjacencyMatrix(nn.Module):
 
     def extract_output_neurons(self):
         # TODO vectorize w.r.t batch dimension
-        
+
+        device = self.weight.device
         N = self.state.shape[0] # BATCH SIZE
-        Y = torch.zeros((N, self.output_neurons))
+        Y = torch.zeros((N, self.output_neurons), device=device)
         for n in range(N):
             c = 0
             for i in range(self.output_neurons, 0, -1):
@@ -160,13 +162,15 @@ class AdjacencyMatrix(nn.Module):
 
 
     def step(self, n=1, energy_scalar=1):
+        device = self.weight.device
+
         for _ in range(n):
-            next_state = torch.zeros(self.state.shape)
+            next_state = torch.zeros(self.state.shape, device=device)
 
             # TODO vectorize w.r.t batch dimension
 
             for n in range(self.state.shape[0]): # batch dimension
-                next_sample = torch.zeros(self.state.shape[1:])
+                next_sample = torch.zeros(self.state.shape[1:], device=device)
 
                 for i in range(next_sample.shape[0]): # feature dimension
                     # next_state += self.graph_weights * np.transpose([neuron]) # this method is MUCH slower
@@ -214,7 +218,7 @@ class AdjacencyMatrix(nn.Module):
 
 
     def get_networkx_graph(self, return_color_map=True):
-        W = self.weight.detach().numpy()
+        W = self.weight.cpu().detach().numpy()
         G = nx.DiGraph(W)
 
         if not return_color_map:
