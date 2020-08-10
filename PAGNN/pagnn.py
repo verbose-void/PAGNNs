@@ -69,7 +69,6 @@ class AdjacencyMatrix(nn.Module):
         self.state = None
 
         self.reset_parameters()
-        self.zero_state()
 
 
     @torch.no_grad()
@@ -121,17 +120,9 @@ class AdjacencyMatrix(nn.Module):
             nn.init.kaiming_uniform_(self.weight, mode='fan_in', nonlinearity='relu')
             self.weight *= torch.tensor(adj_matrix)
 
-    
-    @torch.no_grad()
-    def zero_state(self):
-        if self.state is None:
-            self.state = torch.zeros((self.n, self.n))
-
 
     @torch.no_grad()
     def load_input_neurons(self, x):
-        # TODO vectorize w.r.t batch dimension
-
         N, D = x.shape
 
         if D != self.input_neurons:
@@ -141,15 +132,15 @@ class AdjacencyMatrix(nn.Module):
         device = self.weight.device
         self.state = torch.cat((x, torch.zeros((N, self.n-D), device=device)), dim=1) # BATCH PADDING
         
-        initial_state = torch.zeros((N, self.n, self.n), device=device)
-        for i, s in enumerate(self.state):
-            initial_state[i] = (self.weight.T * s).T
-        self.state = initial_state
+        # initial_state = torch.zeros((N, self.n, self.n), device=device)
+        # for i, s in enumerate(self.state):
+            # initial_state[i] = (self.weight.T * s).T
+        # self.state = initial_state
 
 
     def extract_output_neurons(self):
-        # TODO vectorize w.r.t batch dimension
-
+        # OLD BATCHED CODE (unvectorized)
+        """
         device = self.weight.device
         N = self.state.shape[0] # BATCH SIZE
         Y = torch.zeros((N, self.output_neurons), device=device)
@@ -159,38 +150,44 @@ class AdjacencyMatrix(nn.Module):
                 Y[n, c] = self.state[n, -i, -i]
                 c += 1
         return Y 
+        """
+
+        return self.state[:, -self.output_neurons:]
 
 
     def step(self, n=1, energy_scalar=1):
+        # OLD BATCHED CODE (unvectorized)
+        """
         device = self.weight.device
-
         for _ in range(n):
             next_state = torch.zeros(self.state.shape, device=device)
-
-            # TODO vectorize w.r.t batch dimension
-
+            TODO vectorize w.r.t batch dimension
             for n in range(self.state.shape[0]): # batch dimension
                 next_sample = torch.zeros(self.state.shape[1:], device=device)
-
                 for i in range(next_sample.shape[0]): # feature dimension
                     # next_state += self.graph_weights * np.transpose([neuron]) # this method is MUCH slower
                     next_sample = next_sample + (self.weight.T * self.state[n, i])
-
-                next_state[n] = next_sample.T
-
+                # TODO REMOVE
+                print(next_sample.T)
+                print(next_sample.dtype)
+                old_sample = next_sample.T
             self.state = next_state * energy_scalar
+        """
 
-            # EQUIVALENT UNBATCHED CODE
-            """
-            next_state = torch.zeros(self.state[0].shape)
+        # EQUIVALENT UNBATCHED CODE
+        """
+        next_state = torch.zeros(self.state[0].shape)
 
-            for i in range(self.state[0].shape[0]):
-                # next_state += self.graph_weights * np.transpose([neuron]) # this method is MUCH slower
-                next_state = next_state + (self.weight.T * self.state[0][i])
+        for i in range(self.state[0].shape[0]):
+            # next_state += self.graph_weights * np.transpose([neuron]) # this method is MUCH slower
+            next_state = next_state + (self.weight.T * self.state[0][i])
 
-            # self.state = next_state.T
-            UNBATCHED_STATE = next_state.T
-            """
+        # self.state = next_state.T
+        UNBATCHED_STATE = next_state.T
+        """
+
+        for _ in range(n):
+            self.state = torch.matmul(self.weight, self.state.T).T * energy_scalar
 
 
     def forward(self, x, num_steps=1, use_sequence=False, energy_scalar=1):
@@ -268,7 +265,8 @@ class PAGNN(nn.Module):
 
 
     def extra_repr(self):
-        return 'num_neurons=%i, input_neurons=%i, output_neurons=%i' % (self.n, self.input_neurons, self.output_neurons)
+        return 'num_neurons=%i, input_neurons=%i, output_neurons=%i, device=%s' % \
+                (self.n, self.input_neurons, self.output_neurons, self.structure_adj_matrix.weight.device)
 
 
     def get_networkx_graph(self, return_color_map=True):
