@@ -34,7 +34,7 @@ if GENERATE_OUTPUT_CSV:
     
         data_df = pd.read_json(data_json_str)
         
-        data_df.to_csv(OUTPUT_FOLDER + '/output_reviews_top.csv')
+        data_df.head(100000).to_csv(OUTPUT_FOLDER + '/output_reviews_top.csv')
 
     load_yelp_orig_data()
 
@@ -74,7 +74,7 @@ if __name__ == '__main__':
     porter_stemmer = PorterStemmer()
     # Get the stemmed_tokens
     df['stemmed_tokens'] = [[porter_stemmer.stem(word) for word in tokens] for tokens in df['tokenized_text'] ]
-    df.to_csv('datasets/yelp/reviews.csv')
+    # df.to_csv('datasets/yelp/reviews.csv')
     # print(df['stemmed_tokens'].head(10))
 
     vec_size = 500
