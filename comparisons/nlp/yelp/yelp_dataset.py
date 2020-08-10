@@ -33,9 +33,9 @@ def map_sentiment(stars_received):
 
 
 def get_top_data(top_data_df, top_n=5000):
-    top_data_df_positive = top_data_df[top_data_df['sentiment'] == 1].head(top_n)
-    top_data_df_negative = top_data_df[top_data_df['sentiment'] == -1].head(top_n)
-    top_data_df_neutral = top_data_df[top_data_df['sentiment'] == 0].head(top_n)
+    top_data_df_positive = top_data_df[top_data_df['sentiment'] == 2].head(top_n)
+    top_data_df_negative = top_data_df[top_data_df['sentiment'] == 0].head(top_n)
+    top_data_df_neutral = top_data_df[top_data_df['sentiment'] == 1].head(top_n)
     top_data_df_small = pd.concat([top_data_df_positive, top_data_df_negative, top_data_df_neutral])
     return top_data_df_small
 
@@ -149,7 +149,8 @@ if __name__ == '__main__':
     # get train / test sets
     X_train, X_test, Y_train, Y_test = split_train_test(df)
 
-    device = torch.device('cuda')
+    device = torch.device('cpu') # pagnn is faster with CPU for this test
+    cnn_device = torch.device('cuda') # cnn is faster with GPU for this test
 
     D = w2v.vector_size
     C = 3 # 3 classes = 0, 1, 2 (sentiments)
@@ -159,7 +160,7 @@ if __name__ == '__main__':
     print(pagnn)
 
     cnn = CnnTextClassifier(vocab_size=len(w2v.wv.vocab), num_classes=C, num_filters=10, embedding_size=D)
-    cnn.to(device)
+    cnn.to(cnn_device)
     print(cnn)
 
     print('pagnn num params:', sum(p.numel() for p in pagnn.parameters()))
@@ -201,10 +202,10 @@ if __name__ == '__main__':
                     # convert review into w2v embedding
                     unvec_x = row['stemmed_tokens']
                     x = make_w2v_vector(w2v, unvec_x, device)
-                    x_cnn = make_w2v_vector(cnn.w2vmodel, unvec_x, device, cnn=True, max_sen_len=max_sen_len, padding_idx=padding_idx)
+                    x_cnn = make_w2v_vector(cnn.w2vmodel, unvec_x, cnn_device, cnn=True, max_sen_len=max_sen_len, padding_idx=padding_idx)
                     emb = embedding(x)
 
-                    t = Y_train[index].unsqueeze(0).to(device)
+                    t = Y_train[index].unsqueeze(0)
 
                     for vec in emb:
                         vec = vec.unsqueeze(0)
@@ -214,10 +215,10 @@ if __name__ == '__main__':
 
                     cnn_y = cnn(x_cnn)
 
-                    loss = F.cross_entropy(y, t)
+                    loss = F.cross_entropy(y, t.to(device))
                     total_loss += loss.item()
 
-                    cnn_loss = F.cross_entropy(cnn_y, t)
+                    cnn_loss = F.cross_entropy(cnn_y, t.to(cnn_device))
                     cnn_total_loss += cnn_loss.item()
 
                     loss.backward()
@@ -248,9 +249,9 @@ if __name__ == '__main__':
                     # convert review into w2v embedding
                     unvec_x = row['stemmed_tokens']
                     x = make_w2v_vector(w2v, unvec_x, device)
-                    x_cnn = make_w2v_vector(cnn.w2vmodel, unvec_x, device, cnn=True, max_sen_len=max_sen_len, padding_idx=padding_idx)
+                    x_cnn = make_w2v_vector(cnn.w2vmodel, unvec_x, cnn_device, cnn=True, max_sen_len=max_sen_len, padding_idx=padding_idx)
                     emb = embedding(x)
-                    t = Y_train[index].unsqueeze(0).to(device)
+                    t = Y_train[index].unsqueeze(0)
 
                     for vec in emb:
                         vec = vec.unsqueeze(0)
@@ -260,10 +261,10 @@ if __name__ == '__main__':
                     cnn_y = cnn(x_cnn)
 
                     _, pred = torch.max(y.data, 1)
-                    total_correct += torch.sum(pred == t).item()
+                    total_correct += torch.sum(pred == t.to(device)).item()
                     
                     _, cnn_pred = torch.max(cnn_y.data, 1)
-                    cnn_total_correct += torch.sum(cnn_pred == t).item()
+                    cnn_total_correct += torch.sum(cnn_pred == t.to(cnn_device)).item()
 
             accuracy = total_correct / len(X_test)
             cnn_accuracy = cnn_total_correct / len(X_test)
