@@ -15,6 +15,8 @@
 ![](figures/mushroom_classification.png)
 ### Sequence-Fed Comparisons:
 ![](figures/seq_mv_linear_regression.png)
+### NLP Comparisons:
+![](figures/yelp_review_classification.png)
 
 ## Datasets Credit:
 - Linear Regression: `datasets/linear_regression/` [source](https://www.kaggle.com/andonians/random-linear-regression)
