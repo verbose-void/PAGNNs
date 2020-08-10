@@ -76,6 +76,8 @@ if __name__ == '__main__':
 
     pagnn_history = {'train_loss': [], 'test_loss': []}
     baseline_history = {'train_loss': [], 'test_loss': []}
+
+    # NOTE: using CPU (faster for this specific test, not very many neurons)
     
     for epoch in range(20):
         with torch.enable_grad():

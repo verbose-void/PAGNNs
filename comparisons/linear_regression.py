@@ -20,10 +20,15 @@ if __name__ == '__main__':
         torch.manual_seed(seed)
         np.random.seed(seed)
 
+    device = torch.device('cpu') 
+    # device = torch.device('cuda')
+
     pagnn = PAGNN(5, 1, 1, graph_generator=nx.generators.classic.complete_graph)
+    pagnn.to(device)
     print(pagnn)
 
     linear_model = torch.nn.Linear(1, 1)
+    linear_model.to(device)
     print(linear_model)
 
     # load data into torch tensors
@@ -45,19 +50,19 @@ if __name__ == '__main__':
     baseline_lr = 0.01
     optimizer = torch.optim.Adam(pagnn.parameters(), lr=pagnn_lr)
     baseline_optimizer = torch.optim.Adam(linear_model.parameters(), lr=baseline_lr)
-    num_steps = 5
+    num_steps = 3
 
     pagnn_history = {'train_loss': [], 'test_loss': []}
     baseline_history = {'train_loss': [], 'test_loss': []}
     
-    for epoch in range(15):
+    for epoch in range(10):
         with torch.enable_grad():
             pagnn_total_loss = 0
             baseline_total_loss = 0
 
             for x, t in train_dl:
-                x = x.float().unsqueeze(-1)
-                t = t.float().unsqueeze(-1)
+                x = x.float().unsqueeze(-1).to(device)
+                t = t.float().unsqueeze(-1).to(device)
 
                 optimizer.zero_grad()
                 baseline_optimizer.zero_grad()
@@ -88,8 +93,8 @@ if __name__ == '__main__':
             total_loss = 0
             baseline_total_loss = 0
             for x, t in test_dl:
-                x = x.float().unsqueeze(-1)
-                t = t.float().unsqueeze(-1)
+                x = x.float().unsqueeze(-1).to(device)
+                t = t.float().unsqueeze(-1).to(device)
 
                 y = pagnn(x, num_steps=num_steps)
                 baseline_y = linear_model(x)

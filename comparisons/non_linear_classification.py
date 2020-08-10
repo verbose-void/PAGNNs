@@ -78,6 +78,10 @@ if __name__ == '__main__':
 
     pagnn_history = {'train_loss': [], 'test_accuracy': []}
     baseline_history = {'train_loss': [], 'test_accuracy': []}
+
+    device = torch.device('cpu') # CPU for this test is faster (not very many neurons)
+    pagnn.to(device)
+    linear_model.to(device)
     
     try:
         for epoch in range(1000):
@@ -92,7 +96,8 @@ if __name__ == '__main__':
                     optimizer.zero_grad()
                     baseline_optimizer.zero_grad()
 
-                    x = x.float()
+                    x = x.float().to(device)
+                    t = t.to(device)
 
                     y = pagnn(x, num_steps=num_steps)
                     baseline_y = linear_model(x)
@@ -122,7 +127,8 @@ if __name__ == '__main__':
                 total_correct = 0.0
                 baseline_total_correct = 0.0
                 for x, t in test_dl:
-                    x = x.float()
+                    x = x.float().to(device)
+                    t = t.to(device)
 
                     y = pagnn(x, num_steps=num_steps)
                     baseline_y = linear_model(x)

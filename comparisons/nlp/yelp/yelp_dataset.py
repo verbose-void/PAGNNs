@@ -60,7 +60,7 @@ def split_train_test(top_data_df_small, test_size=0.3, shuffle_state=True):
     return X_train, X_test, Y_train, Y_test
 
 
-def make_w2v_vector(w2v, sentence, cnn=False, max_sen_len=None, padding_idx=None):
+def make_w2v_vector(w2v, sentence, device, cnn=False, max_sen_len=None, padding_idx=None):
     if cnn:
         X = [padding_idx for i in range(max_sen_len)]
     else:
@@ -81,7 +81,7 @@ def make_w2v_vector(w2v, sentence, cnn=False, max_sen_len=None, padding_idx=None
             else:
                 X.append(emb)
 
-    out = torch.tensor(X, dtype=torch.long)
+    out = torch.tensor(X, dtype=torch.long, device=device)
     if cnn:
         out = out.view(1, -1)
 
@@ -149,14 +149,21 @@ if __name__ == '__main__':
     # get train / test sets
     X_train, X_test, Y_train, Y_test = split_train_test(df)
 
+    device = torch.device('cuda')
+
     D = w2v.vector_size
-    C = 3 # 3 classes = -1, 0, 1 (sentiments)
+    C = 3 # 3 classes = 0, 1, 2 (sentiments)
     pagnn = PAGNN(D + C + 5, D, C, graph_generator=nx.generators.classic.complete_graph)
+    pagnn.to(device)
     struc = pagnn.structure_adj_matrix
     print(pagnn)
 
     cnn = CnnTextClassifier(vocab_size=len(w2v.wv.vocab), num_classes=C, num_filters=10, embedding_size=D)
+    cnn.to(device)
     print(cnn)
+
+    print('pagnn num params:', sum(p.numel() for p in pagnn.parameters()))
+    print('cnn num params:', sum(p.numel() for p in cnn.parameters()))
 
     max_sen_len = df['stemmed_tokens'].map(len).max()
 
@@ -164,6 +171,7 @@ if __name__ == '__main__':
     lr = 0.001
     optimizer = torch.optim.Adam(pagnn.parameters(), lr=lr)
     embedding = nn.Embedding.from_pretrained(torch.FloatTensor(w2v.wv.vectors), padding_idx=w2v.wv.vocab['pad'].index)
+    embedding.to(device)
 
     cnn_lr = 0.001
     cnn_optimizer = torch.optim.Adam(cnn.parameters(), lr=cnn_lr)
@@ -173,95 +181,99 @@ if __name__ == '__main__':
     cnn_history = {'train_loss': [], 'test_accuracy': []}
 
     epochs = 30
-    for epoch in range(epochs):
-        print('epoch', epoch)
-        # TRAIN
-        pagnn.train()
-        cnn.train()
+    try:
+        for epoch in range(epochs):
+            print('epoch', epoch)
+            # TRAIN
+            pagnn.train()
+            cnn.train()
 
-        total_loss = 0
-        cnn_total_loss = 0
-        iterator = X_train.iterrows()
-        if use_tqdm:
-            iterator = tqdm(iterator, total=len(X_train))
-        with torch.enable_grad():
-            for index, row in iterator:
-                optimizer.zero_grad()
-                cnn_optimizer.zero_grad()
+            total_loss = 0
+            cnn_total_loss = 0
+            iterator = X_train.iterrows()
+            if use_tqdm:
+                iterator = tqdm(iterator, total=len(X_train))
+            with torch.enable_grad():
+                for index, row in iterator:
+                    optimizer.zero_grad()
+                    cnn_optimizer.zero_grad()
 
-                # convert review into w2v embedding
-                unvec_x = row['stemmed_tokens']
-                x = make_w2v_vector(w2v, unvec_x)
-                x_cnn = make_w2v_vector(cnn.w2vmodel, unvec_x, cnn=True, max_sen_len=max_sen_len, padding_idx=padding_idx)
-                emb = embedding(x)
-                t = Y_train[index].unsqueeze(0)
+                    # convert review into w2v embedding
+                    unvec_x = row['stemmed_tokens']
+                    x = make_w2v_vector(w2v, unvec_x, device)
+                    x_cnn = make_w2v_vector(cnn.w2vmodel, unvec_x, device, cnn=True, max_sen_len=max_sen_len, padding_idx=padding_idx)
+                    emb = embedding(x)
 
-                for vec in emb:
-                    vec = vec.unsqueeze(0)
-                    struc.load_input_neurons(vec)
-                    struc.step()
-                y = struc.extract_output_neurons()
+                    t = Y_train[index].unsqueeze(0).to(device)
 
-                cnn_y = cnn(x_cnn)
+                    for vec in emb:
+                        vec = vec.unsqueeze(0)
+                        struc.load_input_neurons(vec)
+                        struc.step()
+                    y = struc.extract_output_neurons()
 
-                loss = F.cross_entropy(y, t)
-                total_loss += loss.item()
+                    cnn_y = cnn(x_cnn)
 
-                cnn_loss = F.cross_entropy(cnn_y, t)
-                cnn_total_loss += cnn_loss.item()
+                    loss = F.cross_entropy(y, t)
+                    total_loss += loss.item()
 
-                loss.backward()
-                optimizer.step()
+                    cnn_loss = F.cross_entropy(cnn_y, t)
+                    cnn_total_loss += cnn_loss.item()
 
-                cnn_loss.backward()
-                cnn_optimizer.step()
+                    loss.backward()
+                    optimizer.step()
+
+                    cnn_loss.backward()
+                    cnn_optimizer.step()
 
 
-        avg_loss = total_loss / len(X_train)
-        cnn_avg_loss = cnn_total_loss / len(X_train)
-        print('[PAGNN] train loss: %f' % (avg_loss))
-        print('[CNN] train loss: %f' % (cnn_avg_loss))
+            avg_loss = total_loss / len(X_train)
+            cnn_avg_loss = cnn_total_loss / len(X_train)
+            print('[PAGNN] train loss: %f' % (avg_loss))
+            print('[CNN] train loss: %f' % (cnn_avg_loss))
 
-        pagnn_history['train_loss'].append(avg_loss)
-        cnn_history['train_loss'].append(cnn_avg_loss)
+            pagnn_history['train_loss'].append(avg_loss)
+            cnn_history['train_loss'].append(cnn_avg_loss)
 
-        # EVAL
-        pagnn.eval()
-        cnn.eval()
-        iterator = X_test.iterrows()
-        if use_tqdm:
-            iterator = tqdm(iterator, total=len(X_test))
-        total_correct = 0
-        cnn_total_correct = 0
-        with torch.no_grad():
-            for index, row in iterator:
-                # convert review into w2v embedding
-                unvec_x = row['stemmed_tokens']
-                x = make_w2v_vector(w2v, unvec_x)
-                x_cnn = make_w2v_vector(cnn.w2vmodel, unvec_x, cnn=True, max_sen_len=max_sen_len, padding_idx=padding_idx)
-                emb = embedding(x)
-                t = Y_train[index].unsqueeze(0)
+            # EVAL
+            pagnn.eval()
+            cnn.eval()
+            iterator = X_test.iterrows()
+            if use_tqdm:
+                iterator = tqdm(iterator, total=len(X_test))
+            total_correct = 0
+            cnn_total_correct = 0
+            with torch.no_grad():
+                for index, row in iterator:
+                    # convert review into w2v embedding
+                    unvec_x = row['stemmed_tokens']
+                    x = make_w2v_vector(w2v, unvec_x, device)
+                    x_cnn = make_w2v_vector(cnn.w2vmodel, unvec_x, device, cnn=True, max_sen_len=max_sen_len, padding_idx=padding_idx)
+                    emb = embedding(x)
+                    t = Y_train[index].unsqueeze(0).to(device)
 
-                for vec in emb:
-                    vec = vec.unsqueeze(0)
-                    struc.load_input_neurons(vec)
-                    struc.step()
-                y = struc.extract_output_neurons()
-                cnn_y = cnn(x_cnn)
+                    for vec in emb:
+                        vec = vec.unsqueeze(0)
+                        struc.load_input_neurons(vec)
+                        struc.step()
+                    y = struc.extract_output_neurons()
+                    cnn_y = cnn(x_cnn)
 
-                _, pred = torch.max(y.data, 1)
-                total_correct += torch.sum(pred == t).item()
-                
-                _, cnn_pred = torch.max(cnn_y.data, 1)
-                cnn_total_correct += torch.sum(cnn_pred == t).item()
+                    _, pred = torch.max(y.data, 1)
+                    total_correct += torch.sum(pred == t).item()
+                    
+                    _, cnn_pred = torch.max(cnn_y.data, 1)
+                    cnn_total_correct += torch.sum(cnn_pred == t).item()
 
-        accuracy = total_correct / len(X_test)
-        cnn_accuracy = cnn_total_correct / len(X_test)
-        print('[PAGNN] test accuracy:', accuracy)
-        print('[CNN] test accuracy:', cnn_accuracy)
+            accuracy = total_correct / len(X_test)
+            cnn_accuracy = cnn_total_correct / len(X_test)
+            print('[PAGNN] test accuracy:', accuracy)
+            print('[CNN] test accuracy:', cnn_accuracy)
 
-        pagnn_history['test_accuracy'].append(accuracy)
-        cnn_history['test_accuracy'].append(cnn_accuracy)
+            pagnn_history['test_accuracy'].append(accuracy)
+            cnn_history['test_accuracy'].append(cnn_accuracy)
+    except KeyboardInterrupt:
+        print('early exit')
 
     fig = plt.figure(figsize=(16, 9))
     fig.suptitle('Yelp Review Sentiment Classification - (PAGNN vs CNN)', fontsize=24)

@@ -73,9 +73,13 @@ if __name__ == '__main__':
     print('pagnn num params:', sum(p.numel() for p in pagnn_model.parameters()))
     print('ffnn num params:', sum(p.numel() for p in ffnn_model.parameters()))
 
+    device = torch.device('cuda') # CUDA for this test is faster (quite a bit more neurons)
+    pagnn_model.to(device)
+    ffnn_model.to(device)
+
     criterion = F.cross_entropy
     epochs = 25
-    compare((ffnn, pagnn), train_dl, test_dl, epochs, criterion, test_accuracy=True)
+    compare((ffnn, pagnn), train_dl, test_dl, epochs, criterion, test_accuracy=True, device=device)
     
     fig = plt.figure(figsize=(16, 9))
     fig.suptitle('Mushroom Classification - (PAGNN vs FFNN)', fontsize=24)

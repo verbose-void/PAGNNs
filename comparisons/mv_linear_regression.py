@@ -76,6 +76,10 @@ if __name__ == '__main__':
 
     pagnn_history = {'train_loss': [], 'test_loss': []}
     baseline_history = {'train_loss': [], 'test_loss': []}
+
+    device = torch.device('cpu') # CPU for this test is faster (not very many neurons)
+    pagnn.to(device)
+    linear_model.to(device)
     
     for epoch in range(20):
         with torch.enable_grad():
@@ -83,8 +87,8 @@ if __name__ == '__main__':
             baseline_total_loss = 0
 
             for x, t in train_dl:
-                x = x.float()
-                t = t.float().unsqueeze(-1)
+                x = x.float().to(device)
+                t = t.float().unsqueeze(-1).to(device)
 
                 optimizer.zero_grad()
                 baseline_optimizer.zero_grad()
@@ -115,8 +119,8 @@ if __name__ == '__main__':
             total_loss = 0
             baseline_total_loss = 0
             for x, t in test_dl:
-                x = x.float()
-                t = t.float().unsqueeze(-1)
+                x = x.float().to(device)
+                t = t.float().unsqueeze(-1).to(device)
 
                 y = pagnn(x, num_steps=num_steps)
                 baseline_y = linear_model(x)
