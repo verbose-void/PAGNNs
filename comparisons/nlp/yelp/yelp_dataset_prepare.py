@@ -77,7 +77,7 @@ if __name__ == '__main__':
     df.to_csv('datasets/yelp/reviews.csv')
     # print(df['stemmed_tokens'].head(10))
 
-    vec_size = 10
+    vec_size = 500
 
     # path = get_tmpfile('word2vec.model')
     temp_df = df['stemmed_tokens']
