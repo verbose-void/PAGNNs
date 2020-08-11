@@ -81,13 +81,13 @@ def make_w2v_vector(w2v, sentence, device, cnn=False, max_sen_len=None, padding_
             else:
                 X.append(emb)
 
-    out = torch.tensor(X, dtype=torch.long, device=device)
-    if cnn:
-        out = out.view(1, -1)
-
+    out = torch.tensor(X, dtype=torch.long, device=device).view(1, -1)
     return out
 
 
+"""
+Model Credit: https://towardsdatascience.com/sentiment-classification-using-cnn-in-pytorch-fba3c6840430
+"""
 class CnnTextClassifier(nn.Module):
     def __init__(self, vocab_size, num_classes, num_filters, embedding_size, window_sizes=(1,2,3,5)):
         super(CnnTextClassifier, self).__init__()
@@ -154,7 +154,7 @@ if __name__ == '__main__':
 
     D = w2v.vector_size
     C = 3 # 3 classes = 0, 1, 2 (sentiments)
-    pagnn = PAGNN(D + C + 5, D, C, graph_generator=nx.generators.classic.complete_graph)
+    pagnn = PAGNN(D + C + 5, D, C, graph_generator=nx.generators.classic.complete_graph, w2vec_model=w2v)
     pagnn.to(device)
     struc = pagnn.structure_adj_matrix
     print(pagnn)
@@ -171,8 +171,6 @@ if __name__ == '__main__':
     use_tqdm = True
     lr = 0.001
     optimizer = torch.optim.Adam(pagnn.parameters(), lr=lr)
-    embedding = nn.Embedding.from_pretrained(torch.FloatTensor(w2v.wv.vectors), padding_idx=w2v.wv.vocab['pad'].index)
-    embedding.to(device)
 
     cnn_lr = 0.001
     cnn_optimizer = torch.optim.Adam(cnn.parameters(), lr=cnn_lr)
@@ -181,7 +179,7 @@ if __name__ == '__main__':
     pagnn_history = {'train_loss': [], 'test_accuracy': []}
     cnn_history = {'train_loss': [], 'test_accuracy': []}
 
-    epochs = 30
+    epochs = 50
     try:
         for epoch in range(epochs):
             print('epoch', epoch)
@@ -199,20 +197,13 @@ if __name__ == '__main__':
                     optimizer.zero_grad()
                     cnn_optimizer.zero_grad()
 
-                    # convert review into w2v embedding
                     unvec_x = row['stemmed_tokens']
                     x = make_w2v_vector(w2v, unvec_x, device)
                     x_cnn = make_w2v_vector(cnn.w2vmodel, unvec_x, cnn_device, cnn=True, max_sen_len=max_sen_len, padding_idx=padding_idx)
-                    emb = embedding(x)
 
                     t = Y_train[index].unsqueeze(0)
 
-                    for vec in emb:
-                        vec = vec.unsqueeze(0)
-                        struc.load_input_neurons(vec)
-                        struc.step()
-                    y = struc.extract_output_neurons()
-
+                    y = pagnn(x)
                     cnn_y = cnn(x_cnn)
 
                     loss = F.cross_entropy(y, t.to(device))
@@ -246,24 +237,19 @@ if __name__ == '__main__':
             cnn_total_correct = 0
             with torch.no_grad():
                 for index, row in iterator:
-                    # convert review into w2v embedding
                     unvec_x = row['stemmed_tokens']
                     x = make_w2v_vector(w2v, unvec_x, device)
                     x_cnn = make_w2v_vector(cnn.w2vmodel, unvec_x, cnn_device, cnn=True, max_sen_len=max_sen_len, padding_idx=padding_idx)
-                    emb = embedding(x)
+
                     t = Y_train[index].unsqueeze(0)
 
-                    for vec in emb:
-                        vec = vec.unsqueeze(0)
-                        struc.load_input_neurons(vec)
-                        struc.step()
-                    y = struc.extract_output_neurons()
+                    y = pagnn(x)
                     cnn_y = cnn(x_cnn)
 
-                    _, pred = torch.max(y.data, 1)
+                    pred = torch.argmax(y, axis=1)
                     total_correct += torch.sum(pred == t.to(device)).item()
                     
-                    _, cnn_pred = torch.max(cnn_y.data, 1)
+                    cnn_pred = torch.argmax(cnn_y, axis=1)
                     cnn_total_correct += torch.sum(cnn_pred == t.to(cnn_device)).item()
 
             accuracy = total_correct / len(X_test)
