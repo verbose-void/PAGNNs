@@ -192,12 +192,8 @@ class AdjacencyMatrix(nn.Module):
 
     def forward(self, x, num_steps=1, use_sequence=False, energy_scalar=1):
         if use_sequence:
-            # feed features one by one into a single input neuron
-            if self.input_neurons != 1:
-                raise NotImplemented('multi-neuron feeding not supported yet')
-
-            for d in range(x.shape[1]): # feature dimension
-                tx = x[:, d].unsqueeze(-1)
+            for d in range(x.shape[1]): # feature dimension (feed one "feature" at a time -- could be a multi-dimensional "feature" if a sequence input)
+                tx = x[:, d]
                 self.load_input_neurons(tx)
                 self.step(n=num_steps, energy_scalar=energy_scalar)
 
@@ -240,7 +236,7 @@ class AdjacencyMatrix(nn.Module):
 
 class PAGNN(nn.Module):
     def __init__(self, num_neurons, input_neurons, output_neurons, initial_sparsity=0, freeze_sparsity_gradients=True, \
-                 graph_generator=None, create_using=nx.DiGraph):
+                 graph_generator=None, create_using=nx.DiGraph, w2vec_model=None):
         super(PAGNN, self).__init__()
 
         if input_neurons + output_neurons > num_neurons:
@@ -257,11 +253,19 @@ class PAGNN(nn.Module):
         if freeze_sparsity_gradients:
             sam_weight = self.structure_adj_matrix.weight
             self.structure_adj_matrix.weight.register_hook(_create_sparsity_freeze_function(sam_weight))
+
+        self.embedding = None
+        if w2vec_model is not None:
+            self.embedding = nn.Embedding.from_pretrained(torch.FloatTensor(w2vec_model.wv.vectors), \
+                                                          padding_idx=w2vec_model.wv.vocab['pad'].index)
     
 
     def forward(self, x, num_steps=1, use_sequence=False, energy_scalar=1):
-        y = self.structure_adj_matrix(x, num_steps=num_steps, use_sequence=use_sequence, energy_scalar=energy_scalar)
-        return y
+        if self.embedding is not None:
+            use_sequence = True
+            x = self.embedding(x)
+
+        return self.structure_adj_matrix(x, num_steps=num_steps, use_sequence=use_sequence, energy_scalar=energy_scalar)
 
 
     def extra_repr(self):
