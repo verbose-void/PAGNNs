@@ -170,6 +170,7 @@ if __name__ == '__main__':
 
     use_tqdm = True
     lr = 0.001
+    num_steps = 3
     optimizer = torch.optim.Adam(pagnn.parameters(), lr=lr)
 
     cnn_lr = 0.001
@@ -203,7 +204,7 @@ if __name__ == '__main__':
 
                     t = Y_train[index].unsqueeze(0)
 
-                    y = pagnn(x)
+                    y = pagnn(x, num_steps=num_steps)
                     cnn_y = cnn(x_cnn)
 
                     loss = F.cross_entropy(y, t.to(device))
@@ -243,7 +244,7 @@ if __name__ == '__main__':
 
                     t = Y_train[index].unsqueeze(0)
 
-                    y = pagnn(x)
+                    y = pagnn(x, num_steps=num_steps)
                     cnn_y = cnn(x_cnn)
 
                     pred = torch.argmax(y, axis=1)
