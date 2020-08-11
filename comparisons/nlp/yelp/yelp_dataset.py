@@ -10,6 +10,7 @@ from gensim.utils import simple_preprocess
 from gensim.parsing.porter import PorterStemmer
 
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix, accuracy_score
 
 import json
 
@@ -170,7 +171,7 @@ if __name__ == '__main__':
 
     use_tqdm = True
     lr = 0.001
-    num_steps = 3
+    num_steps = 5
     optimizer = torch.optim.Adam(pagnn.parameters(), lr=lr)
 
     cnn_lr = 0.001
@@ -193,6 +194,7 @@ if __name__ == '__main__':
             iterator = X_train.iterrows()
             if use_tqdm:
                 iterator = tqdm(iterator, total=len(X_train))
+            
             with torch.enable_grad():
                 for index, row in iterator:
                     optimizer.zero_grad()
@@ -234,32 +236,43 @@ if __name__ == '__main__':
             iterator = X_test.iterrows()
             if use_tqdm:
                 iterator = tqdm(iterator, total=len(X_test))
-            total_correct = 0
-            cnn_total_correct = 0
+            pagnn_Y = []
+            cnn_Y = []
+            c = 0
             with torch.no_grad():
                 for index, row in iterator:
                     unvec_x = row['stemmed_tokens']
                     x = make_w2v_vector(w2v, unvec_x, device)
                     x_cnn = make_w2v_vector(cnn.w2vmodel, unvec_x, cnn_device, cnn=True, max_sen_len=max_sen_len, padding_idx=padding_idx)
 
-                    t = Y_train[index].unsqueeze(0)
+                    t = Y_test[index].unsqueeze(0)
 
                     y = pagnn(x, num_steps=num_steps)
                     cnn_y = cnn(x_cnn)
 
                     pred = torch.argmax(y, axis=1)
-                    total_correct += torch.sum(pred == t.to(device)).item()
-                    
-                    cnn_pred = torch.argmax(cnn_y, axis=1)
-                    cnn_total_correct += torch.sum(cnn_pred == t.to(cnn_device)).item()
+                    pagnn_Y.append(pred.item())
 
-            accuracy = total_correct / len(X_test)
-            cnn_accuracy = cnn_total_correct / len(X_test)
+                    cnn_pred = torch.argmax(cnn_y, axis=1)
+                    cnn_Y.append(cnn_pred.item())
+
+                    c += 1 # bs = 1
+
+            accuracy = accuracy_score(pagnn_Y, Y_test)
+            cnn_accuracy = accuracy_score(cnn_Y, Y_test)
+
+            print('[eval]----')
             print('[PAGNN] test accuracy:', accuracy)
+            print('[PAGNN] confusion matrix:')
+            print(confusion_matrix(pagnn_Y, Y_test))
+
             print('[CNN] test accuracy:', cnn_accuracy)
+            print('[CNN] confusion matrix:')
+            print(confusion_matrix(cnn_Y, Y_test))
 
             pagnn_history['test_accuracy'].append(accuracy)
             cnn_history['test_accuracy'].append(cnn_accuracy)
+
     except KeyboardInterrupt:
         print('early exit')
 
