@@ -141,7 +141,7 @@ if __name__ == '__main__':
     """LOAD AND PREPROCESS DATA"""
     df = pd.read_csv('datasets/yelp/output_reviews_top.csv')
     df['sentiment'] = [map_sentiment(x) for x in df['stars']]
-    df = get_top_data(df, top_n=5000)
+    df = get_top_data(df, top_n=10000)
     # Tokenize the text column to get the new column 'tokenized_text'
     df['tokenized_text'] = [simple_preprocess(line, deacc=True) for line in df['text']] 
     # Get the stemmed_tokens
@@ -150,12 +150,12 @@ if __name__ == '__main__':
     # get train / test sets
     X_train, X_test, Y_train, Y_test = split_train_test(df)
 
-    device = torch.device('cpu') # pagnn is faster with CPU for this test
+    device = torch.device('cuda') # pagnn is faster with CPU for this test
     cnn_device = torch.device('cuda') # cnn is faster with GPU for this test
 
     D = w2v.vector_size
     C = 3 # 3 classes = 0, 1, 2 (sentiments)
-    pagnn = PAGNN(D + C + 5, D, C, graph_generator=nx.generators.classic.complete_graph, w2vec_model=w2v)
+    pagnn = PAGNN(D + C + 100, D, C, graph_generator=nx.generators.classic.complete_graph, w2vec_model=w2v)
     pagnn.to(device)
     struc = pagnn.structure_adj_matrix
     print(pagnn)
@@ -181,7 +181,7 @@ if __name__ == '__main__':
     pagnn_history = {'train_loss': [], 'test_accuracy': []}
     cnn_history = {'train_loss': [], 'test_accuracy': []}
 
-    epochs = 50
+    epochs = 100
     try:
         for epoch in range(epochs):
             print('epoch', epoch)
