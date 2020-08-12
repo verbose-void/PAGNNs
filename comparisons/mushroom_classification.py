@@ -54,7 +54,7 @@ if __name__ == '__main__':
 
     pagnn_lr = 0.001
     extra_neurons = 5
-    pagnn_model = PAGNN(D + C + extra_neurons, D, C, graph_generator=nx.generators.classic.complete_graph)
+    pagnn_model = PAGNN(D + C + extra_neurons, D, C, initial_sparsity=0.98) # graph_generator=nx.generators.classic.complete_graph)
     pagnn = {
         'name': 'PAGNN',
         'model': pagnn_model,
