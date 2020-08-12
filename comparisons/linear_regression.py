@@ -23,7 +23,7 @@ if __name__ == '__main__':
     device = torch.device('cpu') 
     # device = torch.device('cuda')
 
-    pagnn = PAGNN(5, 1, 1, graph_generator=nx.generators.classic.complete_graph)
+    pagnn = PAGNN(5, 1, 1, initial_sparsity=0.6) # graph_generator=nx.generators.classic.complete_graph)
     pagnn.to(device)
     print(pagnn)
 
