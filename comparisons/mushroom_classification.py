@@ -52,55 +52,74 @@ if __name__ == '__main__':
 
     print('input features:', D, 'num classes:', C)
 
-    pagnn_lr = 0.001
-    extra_neurons = 5
-    pagnn_model = PAGNN(D + C + extra_neurons, D, C, initial_sparsity=0.98) # graph_generator=nx.generators.classic.complete_graph)
-    pagnn = {
-        'name': 'PAGNN',
-        'model': pagnn_model,
-        'num_steps': 5,
-        'optimizer': torch.optim.Adam(pagnn_model.parameters(), lr=pagnn_lr),
-    }
+    device = torch.device('cuda') # CUDA for this test is faster (quite a bit more neurons)
+
+    model_dicts = []
+    configs = [
+        {'initial_sparsity': 0, 'num_steps': 5},
+        {'initial_sparsity': 0.1, 'num_steps': 5},
+        {'initial_sparsity': 0.5, 'num_steps': 5},
+        {'initial_sparsity': 0.8, 'num_steps': 5},
+        {'initial_sparsity': 0.9, 'num_steps': 5},
+        {'initial_sparsity': 0.98, 'num_steps': 5},
+    ]
+    
+    for config in configs:
+        pagnn_lr = 0.001
+        extra_neurons = 5
+        n = D + C + extra_neurons
+        pagnn_model = PAGNN(n, D, C, initial_sparsity=config['initial_sparsity']) # graph_generator=nx.generators.classic.complete_graph)
+        pagnn_model.to(device)
+        pagnn = {
+            'name': 'PAGNN(neurons=%i, initial_sparsity=%f)' % (n, config['initial_sparsity']),
+            'model': pagnn_model,
+            'num_steps': config['num_steps'],
+            'optimizer': torch.optim.Adam(pagnn_model.parameters(), lr=pagnn_lr),
+        }
+
+        model_dicts.append(pagnn)
 
     ffnn_lr = 0.0001
     ffnn_model = FFNN(D, D, C)
+    ffnn_model.to(device)
     ffnn = {
-        'name': 'FFNN',
+        'name': 'FFNN(%i, %i, %i)' % (D, D, C),
         'model': ffnn_model,
         'optimizer': torch.optim.Adam(ffnn_model.parameters(), lr=ffnn_lr),
     }
 
-    print('pagnn num params:', sum(p.numel() for p in pagnn_model.parameters()))
-    print('ffnn num params:', sum(p.numel() for p in ffnn_model.parameters()))
+    model_dicts.append(ffnn)
 
-    device = torch.device('cuda') # CUDA for this test is faster (quite a bit more neurons)
-    pagnn_model.to(device)
-    ffnn_model.to(device)
+    # print('pagnn num params:', sum(p.numel() for p in pagnn_model.parameters()))
+    # print('ffnn num params:', sum(p.numel() for p in ffnn_model.parameters()))
 
     criterion = F.cross_entropy
     epochs = 25
-    compare((ffnn, pagnn), train_dl, test_dl, epochs, criterion, test_accuracy=True, device=device)
+    compare(model_dicts, train_dl, test_dl, epochs, criterion, test_accuracy=True, device=device)
     
     fig = plt.figure(figsize=(16, 9))
     fig.suptitle('Mushroom Classification - (PAGNN vs FFNN)', fontsize=24)
 
     plt.subplot(221)
-    plt.plot(pagnn['train_history'], label='PAGNN (lr: %f)' % pagnn_lr)
-    plt.plot(ffnn['train_history'], label='FFNN (lr: %f)' % ffnn_lr)
+    for model_dict in model_dicts:
+        plt.plot(model_dict['train_history'], label=model_dict['name'])
+    # plt.plot(ffnn['train_history'], label='FFNN (lr: %f)' % ffnn_lr)
     plt.legend()
     plt.title('train loss')
 
     plt.subplot(222)
-    plt.plot(pagnn['test_history'], label='PAGNN')
-    plt.plot(ffnn['test_history'], label='FFNN')
+    for model_dict in model_dicts:
+        plt.plot(model_dict['test_history'], label=model_dict['name'])
+    # plt.plot(ffnn['test_history'], label='FFNN')
     plt.legend()
     plt.title('test accuracy')
 
     plt.subplot(212)
     print('creating graph...')
+    pagnn = model_dicts[-2] # get the last pagnn network defined
     G, color_map = pagnn['model'].get_networkx_graph(return_color_map=True)
     nx.draw(G, with_labels=True, node_color=color_map)
-    plt.title('PAGNN architecture')
+    plt.title('%s architecture' % pagnn['name'])
 
     plt.savefig('figures/mushroom_classification.png', transparent=True)
     plt.show()
