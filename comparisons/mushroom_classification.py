@@ -10,8 +10,15 @@ import networkx as nx
 
 import matplotlib.pyplot as plt
 
+import numpy as np
+
 
 if __name__ == '__main__':
+    seed = 666
+    if seed is not None:
+        torch.manual_seed(seed)
+        np.random.seed(seed)
+
     df = pd.read_csv('datasets/mushroom_classification/mushrooms.csv')
 
     # one-hot encodings
@@ -117,8 +124,7 @@ if __name__ == '__main__':
     plt.subplot(212)
     print('creating graph...')
     pagnn = model_dicts[-2] # get the last pagnn network defined
-    G, color_map = pagnn['model'].get_networkx_graph(return_color_map=True)
-    nx.draw(G, with_labels=True, node_color=color_map)
+    pagnn['model'].draw_networkx_graph(mode='scaled_weights')
     plt.title('%s architecture' % pagnn['name'])
 
     plt.savefig('figures/mushroom_classification.png', transparent=True)
