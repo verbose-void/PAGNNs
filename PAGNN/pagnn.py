@@ -122,7 +122,7 @@ class AdjacencyMatrix(nn.Module):
 
 
     @torch.no_grad()
-    def load_input_neurons(self, x):
+    def load_input_neurons(self, x, retain_state=False):
         N, D = x.shape
 
         if D != self.input_neurons:
@@ -130,7 +130,12 @@ class AdjacencyMatrix(nn.Module):
                              (D, self.input_neurons))
 
         device = self.weight.device
-        self.state = torch.cat((x, torch.zeros((N, self.n-D), device=device)), dim=1) # BATCH PADDING
+        if retain_state and self.state is not None:
+            state_clone = self.state.clone()
+            state_clone[:, 0:D] = x
+            self.state = state_clone
+        else:
+            self.state = torch.cat((x, torch.zeros((N, self.n-D), device=device)), dim=1) # BATCH PADDING
         
         # initial_state = torch.zeros((N, self.n, self.n), device=device)
         # for i, s in enumerate(self.state):
@@ -194,15 +199,15 @@ class AdjacencyMatrix(nn.Module):
         if use_sequence:
             for d in range(x.shape[1]): # feature dimension (feed one "feature" at a time -- could be a multi-dimensional "feature" if a sequence input)
                 tx = x[:, d]
-                self.load_input_neurons(tx)
+                self.load_input_neurons(tx, retain_state=True) # since there is a temporal aspect, we care about the previous state
                 self.step(n=num_steps, energy_scalar=energy_scalar)
-
         else:
             # load all features into the input neurons simultaneously
-            self.load_input_neurons(x)
+            self.load_input_neurons(x, retain_state=False) # since we don't care about the previous state, clear it
             self.step(n=num_steps, energy_scalar=energy_scalar)
 
         y = self.extract_output_neurons()
+        self.state = None # clear state
         return y
 
 
