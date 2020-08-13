@@ -106,7 +106,7 @@ if __name__ == '__main__':
 
                     x = x.float()
 
-                    y = pagnn(x, num_steps=num_steps, use_sequence=use_sequence, energy_scalar=energy_scalar)
+                    y = pagnn(x.unsqueeze(-1), num_steps=num_steps, use_sequence=use_sequence, energy_scalar=energy_scalar)
                     baseline_y = linear_model(x)
 
                     loss = F.cross_entropy(y, t)
@@ -144,7 +144,7 @@ if __name__ == '__main__':
                 for x, t in test_dl:
                     x = x.float()
 
-                    y = pagnn(x, num_steps=num_steps, use_sequence=use_sequence, energy_scalar=energy_scalar)
+                    y = pagnn(x.unsqueeze(-1), num_steps=num_steps, use_sequence=use_sequence, energy_scalar=energy_scalar)
                     baseline_y = linear_model(x)
 
                     pred = torch.argmax(y, axis=1)
@@ -183,8 +183,7 @@ if __name__ == '__main__':
     plt.title('test accuracy')
 
     plt.subplot(212)
-    G, color_map = pagnn.get_networkx_graph(return_color_map=True)
-    nx.draw(G, with_labels=True, node_color=color_map)
+    pagnn.draw_networkx_graph(mode='scaled_weights')
     plt.title('PAGNN architecture')
 
     plt.savefig('figures/seq_non_linear_classification.png', transparent=True)
