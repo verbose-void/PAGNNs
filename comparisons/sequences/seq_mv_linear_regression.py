@@ -99,7 +99,7 @@ if __name__ == '__main__':
                 pagnn_total_loss += loss.item()
                 baseline_total_loss += baseline_loss.item()
 
-                loss.backward(retain_graph=True)
+                loss.backward()
                 optimizer.step()
 
                 baseline_loss.backward()
