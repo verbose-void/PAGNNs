@@ -6,6 +6,7 @@ import numpy as np
 from math import ceil
 
 import networkx as nx
+from operator import itemgetter
 
 
 def _create_sparsity_freeze_function(weight):
@@ -196,6 +197,8 @@ class AdjacencyMatrix(nn.Module):
 
 
     def forward(self, x, num_steps=1, use_sequence=False, energy_scalar=1):
+        self.state = None # clear state
+
         if use_sequence:
             for d in range(x.shape[1]): # feature dimension (feed one "feature" at a time -- could be a multi-dimensional "feature" if a sequence input)
                 tx = x[:, d]
@@ -207,7 +210,6 @@ class AdjacencyMatrix(nn.Module):
             self.step(n=num_steps, energy_scalar=energy_scalar)
 
         y = self.extract_output_neurons()
-        self.state = None # clear state
         return y
 
 
@@ -237,6 +239,41 @@ class AdjacencyMatrix(nn.Module):
                 color_map.append('gray')
 
         return G, color_map
+
+
+    def draw_networkx_graph(self, mode='default'):
+        G, color_map = self.get_networkx_graph(return_color_map=True)
+
+        if mode == 'default':
+            nx.draw(G, with_labels=True, node_color=color_map)
+        elif mode == 'ego':
+            node_and_degree = G.degree()
+            (largest_hub, degree) = sorted(node_and_degree, key=itemgetter(1))[-1]
+            hub_ego = nx.ego_graph(G, largest_hub)
+            pos = nx.spring_layout(hub_ego)
+            nx.draw(hub_ego, pos, node_color='b', node_size=50, with_labels=False)
+            nx.draw_networkx_nodes(hub_ego, pos, nodelist=[largest_hub], node_size=300, node_color='r')
+        elif mode == 'karate_club':
+            nx.draw_circular(G, with_labels=True, node_color=color_map)
+        elif mode == 'roget':
+            UG = G.to_undirected()
+            nx.draw_circular(UG, node_color=color_map, node_size=1, line_color='grey', linewidths=0, width=0.1)
+        elif mode == 'football':
+            nx.draw(G, node_color=color_map, node_size=50, line_color='grey', linewidths=0, width=0.1)
+        elif mode == 'scaled_weights':
+            degrees = np.array([G.degree[n] for n in range(self.n)])
+            degrees = degrees - np.min(degrees)
+            degrees = degrees / np.max(degrees)
+            degrees *= 200
+            degrees += 10
+            weightings = np.abs(self.weight.cpu().detach().numpy().flatten())
+            weightings = weightings - np.min(weightings)
+            weightings = weightings / np.max(weightings)
+            weightings *= 1
+            weightings += 0.1
+            nx.draw(G, node_color=color_map, node_size=degrees, width=weightings)
+        else:
+            raise Exception('mode %s not found.' % mode)
 
 
 class PAGNN(nn.Module):
@@ -280,3 +317,6 @@ class PAGNN(nn.Module):
 
     def get_networkx_graph(self, return_color_map=True):
         return self.structure_adj_matrix.get_networkx_graph(return_color_map=return_color_map)
+
+    def draw_networkx_graph(self, mode='default'):
+        return self.structure_adj_matrix.draw_networkx_graph(mode=mode)
