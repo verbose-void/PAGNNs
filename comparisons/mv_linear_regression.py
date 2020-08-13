@@ -156,8 +156,7 @@ if __name__ == '__main__':
     plt.title('test loss')
 
     plt.subplot(212)
-    G, color_map = pagnn.get_networkx_graph(return_color_map=True)
-    nx.draw(G, with_labels=True, node_color=color_map)
+    pagnn.draw_networkx_graph(mode='scaled_weights')
     plt.title('PAGNN architecture')
 
     plt.savefig('figures/mv_linear_regression.png', transparent=True)
