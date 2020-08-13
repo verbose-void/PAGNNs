@@ -122,7 +122,6 @@ class AdjacencyMatrix(nn.Module):
             self.weight *= torch.tensor(adj_matrix)
 
 
-    @torch.no_grad()
     def load_input_neurons(self, x, retain_state=False):
         N, D = x.shape
 
@@ -132,9 +131,10 @@ class AdjacencyMatrix(nn.Module):
 
         device = self.weight.device
         if retain_state and self.state is not None:
-            state_clone = self.state.clone()
-            state_clone[:, 0:D] = x
-            self.state = state_clone
+            # state_clone = self.state.clone()
+            # state_clone[:, 0:D] = x
+            # self.state = state_clone
+            self.state[:, 0:D] = x
         else:
             self.state = torch.cat((x, torch.zeros((N, self.n-D), device=device)), dim=1) # BATCH PADDING
         
