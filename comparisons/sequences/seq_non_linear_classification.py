@@ -19,7 +19,7 @@ from sklearn.utils import shuffle
 
 
 if __name__ == '__main__':
-    seed = None # 666
+    seed = 666
     if seed is not None:
         torch.manual_seed(seed)
         np.random.seed(seed)
@@ -48,16 +48,9 @@ if __name__ == '__main__':
     print('number of data features:', D)
     print('number of classes:', C)
 
-    # if use_sequence = false, input neurons will be defined as =D
-    use_sequence = True 
-
     # create models
-    if use_sequence:
-        pagnn = PAGNN(C + 5, 1, C, graph_generator=nx.generators.classic.complete_graph)
-        num_steps = 1
-    else:
-        pagnn = PAGNN(D + C + 5, D, C, graph_generator=nx.generators.classic.complete_graph)
-        num_steps = 3
+    pagnn = PAGNN(C + 10, 1, C, initial_sparsity=0.3) # graph_generator=nx.generators.classic.complete_graph)
+    num_steps = 1
 
     print(pagnn)
     linear_model = FFNN(D, 25, C) # torch.nn.Linear(D, C)
@@ -106,7 +99,7 @@ if __name__ == '__main__':
 
                     x = x.float()
 
-                    y = pagnn(x.unsqueeze(-1), num_steps=num_steps, use_sequence=use_sequence, energy_scalar=energy_scalar)
+                    y = pagnn(x.unsqueeze(-1), num_steps=num_steps, use_sequence=True, energy_scalar=energy_scalar)
                     baseline_y = linear_model(x)
 
                     loss = F.cross_entropy(y, t)
@@ -144,7 +137,7 @@ if __name__ == '__main__':
                 for x, t in test_dl:
                     x = x.float()
 
-                    y = pagnn(x.unsqueeze(-1), num_steps=num_steps, use_sequence=use_sequence, energy_scalar=energy_scalar)
+                    y = pagnn(x.unsqueeze(-1), num_steps=num_steps, use_sequence=True, energy_scalar=energy_scalar)
                     baseline_y = linear_model(x)
 
                     pred = torch.argmax(y, axis=1)
@@ -168,7 +161,7 @@ if __name__ == '__main__':
         print('early exit keyboard interrupt')
 
     fig = plt.figure(figsize=(16, 9))
-    fig.suptitle('Non-Linear Classification - (PAGNN vs FFNN(4, 25, 3))', fontsize=24)
+    fig.suptitle('Sequence-Fed Non-Linear Classification - (PAGNN vs FFNN(4, 25, 3))', fontsize=24)
 
     plt.subplot(221)
     plt.plot(pagnn_history['train_loss'], label='PAGNN (lr: %f)' % pagnn_lr)
