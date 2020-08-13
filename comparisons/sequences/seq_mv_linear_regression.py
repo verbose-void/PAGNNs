@@ -50,7 +50,7 @@ if __name__ == '__main__':
     print('number of data features:', D)
 
     # create models
-    pagnn = PAGNN(D + 5, 1, 1, graph_generator=nx.generators.classic.complete_graph)
+    pagnn = PAGNN(D + 5, 1, 1, initial_sparsity=0.8) # graph_generator=nx.generators.classic.complete_graph)
     print(pagnn)
     linear_model = torch.nn.Linear(D, 1)
     print(linear_model)
@@ -91,7 +91,7 @@ if __name__ == '__main__':
                 optimizer.zero_grad()
                 baseline_optimizer.zero_grad()
 
-                y = pagnn(x, use_sequence=True)
+                y = pagnn(x.unsqueeze(-1), use_sequence=True)
                 baseline_y = linear_model(x)
 
                 loss = F.mse_loss(y, t)
@@ -99,7 +99,7 @@ if __name__ == '__main__':
                 pagnn_total_loss += loss.item()
                 baseline_total_loss += baseline_loss.item()
 
-                loss.backward()
+                loss.backward(retain_graph=True)
                 optimizer.step()
 
                 baseline_loss.backward()
@@ -120,7 +120,7 @@ if __name__ == '__main__':
                 x = x.float()
                 t = t.float().unsqueeze(-1)
 
-                y = pagnn(x, num_steps=num_steps, use_sequence=True)
+                y = pagnn(x.unsqueeze(-1), num_steps=num_steps, use_sequence=True)
                 baseline_y = linear_model(x)
 
                 loss = F.mse_loss(y, t)
