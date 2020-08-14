@@ -141,7 +141,7 @@ if __name__ == '__main__':
     """LOAD AND PREPROCESS DATA"""
     df = pd.read_csv('datasets/yelp/output_reviews_top.csv')
     df['sentiment'] = [map_sentiment(x) for x in df['stars']]
-    df = get_top_data(df, top_n=1000)
+    df = get_top_data(df, top_n=10000)
     # Tokenize the text column to get the new column 'tokenized_text'
     df['tokenized_text'] = [simple_preprocess(line, deacc=True) for line in df['text']] 
     # Get the stemmed_tokens
@@ -182,7 +182,7 @@ if __name__ == '__main__':
     pagnn_history = {'train_loss': [], 'test_accuracy': []}
     cnn_history = {'train_loss': [], 'test_accuracy': []}
 
-    epochs = 100
+    epochs = 64
     try:
         for epoch in range(epochs):
             print('epoch', epoch)
