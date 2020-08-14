@@ -141,7 +141,7 @@ if __name__ == '__main__':
     """LOAD AND PREPROCESS DATA"""
     df = pd.read_csv('datasets/yelp/output_reviews_top.csv')
     df['sentiment'] = [map_sentiment(x) for x in df['stars']]
-    df = get_top_data(df, top_n=10000)
+    df = get_top_data(df, top_n=1000)
     # Tokenize the text column to get the new column 'tokenized_text'
     df['tokenized_text'] = [simple_preprocess(line, deacc=True) for line in df['text']] 
     # Get the stemmed_tokens
@@ -155,7 +155,8 @@ if __name__ == '__main__':
 
     D = w2v.vector_size
     C = 3 # 3 classes = 0, 1, 2 (sentiments)
-    pagnn = PAGNN(D + C + 100, D, C, graph_generator=nx.generators.classic.complete_graph, w2vec_model=w2v)
+    extra_neurons = 60
+    pagnn = PAGNN(D + C + extra_neurons, D, C, initial_sparsity=0.8, w2vec_model=w2v) # graph_generator=nx.generators.classic.complete_graph, w2vec_model=w2v)
     pagnn.to(device)
     struc = pagnn.structure_adj_matrix
     print(pagnn)
@@ -171,7 +172,7 @@ if __name__ == '__main__':
 
     use_tqdm = True
     lr = 0.001
-    num_steps = 5
+    num_steps = 1
     optimizer = torch.optim.Adam(pagnn.parameters(), lr=lr)
 
     cnn_lr = 0.001
@@ -292,8 +293,7 @@ if __name__ == '__main__':
     plt.title('test accuracy')
 
     plt.subplot(212)
-    G, color_map = pagnn.get_networkx_graph(return_color_map=True)
-    nx.draw(G, with_labels=True, node_color=color_map)
+    pagnn.draw_networkx_graph(mode='scaled_weights')
     plt.title('PAGNN architecture')
 
     plt.savefig('figures/yelp_review_classification.png', transparent=True)
