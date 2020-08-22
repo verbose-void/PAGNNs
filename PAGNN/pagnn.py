@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 import numpy as np
 
@@ -87,6 +88,9 @@ class AdjacencyMatrix(nn.Module):
           simply removed by reducing the number of allocated neurons.
         """
 
+        self.num_steps = nn.Parameter(torch.tensor(1, dtype=torch.float))
+        self.energy_scalar = nn.Parameter(torch.tensor(0, dtype=torch.float))
+
         if self.graph_generator is None:
             self.weight = nn.Parameter(torch.ones((self.n, self.n)))
 
@@ -134,13 +138,15 @@ class AdjacencyMatrix(nn.Module):
             # state_clone = self.state.clone()
             # state_clone[:, 0:D] = x
             # self.state = state_clone
-            self.state[:, 0:D] = x
+            self.state[:, 0:D] *= x
         else:
             self.state = torch.cat((x, torch.zeros((N, self.n-D), device=device)), dim=1) # BATCH PADDING
-        
+
+        # self.state = torch.tensor(np.hstack((x, np.zeros((N, self.n-D))))) # BATCH PADDING
+
         # initial_state = torch.zeros((N, self.n, self.n), device=device)
         # for i, s in enumerate(self.state):
-            # initial_state[i] = (self.weight.T * s).T
+        #     initial_state[i] = (self.weight.T * s).T
         # self.state = initial_state
 
 
@@ -156,28 +162,27 @@ class AdjacencyMatrix(nn.Module):
                 Y[n, c] = self.state[n, -i, -i]
                 c += 1
         return Y 
-        """
+        """ 
 
         return self.state[:, -self.output_neurons:]
 
 
-    def step(self, n=1, energy_scalar=1):
+    def step(self, x, replace_input, n=1):
+        device = self.weight.device
+
         # OLD BATCHED CODE (unvectorized)
         """
-        device = self.weight.device
         for _ in range(n):
             next_state = torch.zeros(self.state.shape, device=device)
-            TODO vectorize w.r.t batch dimension
+            # TODO vectorize w.r.t batch dimension
             for n in range(self.state.shape[0]): # batch dimension
                 next_sample = torch.zeros(self.state.shape[1:], device=device)
                 for i in range(next_sample.shape[0]): # feature dimension
                     # next_state += self.graph_weights * np.transpose([neuron]) # this method is MUCH slower
                     next_sample = next_sample + (self.weight.T * self.state[n, i])
                 # TODO REMOVE
-                print(next_sample.T)
-                print(next_sample.dtype)
-                old_sample = next_sample.T
-            self.state = next_state * energy_scalar
+                next_state[n] = next_sample.T
+            self.state = next_state * self.energy_scalar
         """
 
         # EQUIVALENT UNBATCHED CODE
@@ -189,25 +194,54 @@ class AdjacencyMatrix(nn.Module):
             next_state = next_state + (self.weight.T * self.state[0][i])
 
         # self.state = next_state.T
-        UNBATCHED_STATE = next_state.T
+        self.state = next_state.T
         """
 
+        # for _ in range(n):
+            # self.state = torch.matmul(self.weight, self.state.T).T * self.energy_scalar
+
+        # n = torch.round(self.num_steps).int()
+        # print(n, self.num_steps)
+
+        """
         for _ in range(n):
-            self.state = torch.matmul(self.weight, self.state.T).T * energy_scalar
+            next_state = torch.zeros(self.state.shape, device=device)
+            for i, W_col in enumerate(self.weight.T):
+                next_state[:, i] = torch.sum(W_col * self.state, dim=1)
+            self.state = next_state
+
+            # non-linearity
+            self.load_input_neurons(x, retain_state=True)
+            # e = 1 - F.tanh(torch.abs(x) * self.energy_scalar)
+            # self.state = e * self.state
+        """
+
+        for step in range(n):
+            """
+            for i in range(self.state.shape[0]): # batch
+                s = (self.state[i] + torch.zeros(self.n, 1)).T
+                s = s * self.weight
+                self.state[i] = torch.sum(s, dim=0)
+            """
+
+            self.state = torch.matmul(self.state, self.weight)
+
+            if replace_input:
+                self.load_input_neurons(x, retain_state=True)
 
 
-    def forward(self, x, num_steps=1, use_sequence=False, energy_scalar=1):
+    def forward(self, x, num_steps=1, use_sequence=False, retain_state=False):
         self.state = None # clear state
 
         if use_sequence:
             for d in range(x.shape[1]): # feature dimension (feed one "feature" at a time -- could be a multi-dimensional "feature" if a sequence input)
                 tx = x[:, d]
                 self.load_input_neurons(tx, retain_state=True) # since there is a temporal aspect, we care about the previous state
-                self.step(n=num_steps, energy_scalar=energy_scalar)
+                self.step(tx, False, n=num_steps)
         else:
             # load all features into the input neurons simultaneously
-            self.load_input_neurons(x, retain_state=False) # since we don't care about the previous state, clear it
-            self.step(n=num_steps, energy_scalar=energy_scalar)
+            self.load_input_neurons(x, retain_state=retain_state) # since we don't care about the previous state, clear it
+            self.step(x, True, n=num_steps)
 
         y = self.extract_output_neurons()
         return y
@@ -241,11 +275,11 @@ class AdjacencyMatrix(nn.Module):
         return G, color_map
 
 
-    def draw_networkx_graph(self, mode='default'):
+    def draw_networkx_graph(self, mode='default', ax=None):
         G, color_map = self.get_networkx_graph(return_color_map=True)
 
         if mode == 'default':
-            nx.draw(G, with_labels=True, node_color=color_map)
+            nx.draw(G, with_labels=True, node_color=color_map, ax=ax)
         elif mode == 'ego':
             node_and_degree = G.degree()
             (largest_hub, degree) = sorted(node_and_degree, key=itemgetter(1))[-1]
@@ -302,12 +336,12 @@ class PAGNN(nn.Module):
                                                           padding_idx=w2vec_model.wv.vocab['pad'].index)
     
 
-    def forward(self, x, num_steps=1, use_sequence=False, energy_scalar=1):
+    def forward(self, x, num_steps=1, use_sequence=False, retain_state=False):
         if self.embedding is not None:
             use_sequence = True
             x = self.embedding(x)
 
-        return self.structure_adj_matrix(x, num_steps=num_steps, use_sequence=use_sequence, energy_scalar=energy_scalar)
+        return self.structure_adj_matrix(x, num_steps=num_steps, use_sequence=use_sequence, retain_state=retain_state)
 
 
     def extra_repr(self):
@@ -318,5 +352,5 @@ class PAGNN(nn.Module):
     def get_networkx_graph(self, return_color_map=True):
         return self.structure_adj_matrix.get_networkx_graph(return_color_map=return_color_map)
 
-    def draw_networkx_graph(self, mode='default'):
-        return self.structure_adj_matrix.draw_networkx_graph(mode=mode)
+    def draw_networkx_graph(self, mode='default', ax=None):
+        return self.structure_adj_matrix.draw_networkx_graph(mode=mode, ax=ax)
