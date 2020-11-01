@@ -1,15 +1,14 @@
 #!/usr/bin/env python
 
-from distutils.core import setup
+from setuptools import setup, find_packages
 
 with open('requirements.txt') as f:
     requirements = f.read().splitlines()
 
-setup(name='PAGNN',
+setup(name='pagnn',
       version='0.1',
       description='Persistent Artificial Graph-based Neural Networks (PAGNNs)',
       author='Dyllan McCreary',
       author_email='dyllanmccreary@protonmail.com',
-      packages=['PAGNN'],
-      install_requires=requirements
-      )
+      packages=find_packages(),
+      install_requires=requirements)
