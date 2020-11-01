@@ -22,12 +22,14 @@ class PAGNNLayer(torch.nn.Module):
         self._steps = steps
         
         self.weight = torch.nn.Parameter(torch.zeros((self._total_neurons, self._total_neurons)))
+        self.bias = torch.nn.Parameter(torch.zeros(self._total_neurons))
         self.state = torch.zeros(self._total_neurons)
         torch.nn.init.kaiming_uniform_(self.weight, mode='fan_in')
 
     def step(self, n=1):
         for _ in range(n):
             self.state = _pagnn_op(self.state, self.weight)
+            self.state += self.bias
 
     def forward(self, x):
         self.load_input_neurons(x)
