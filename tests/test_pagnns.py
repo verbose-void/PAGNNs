@@ -80,3 +80,46 @@ def test_linear_regression():
         print('pagnn loss history', pagnn_losses)
 
         assert np.allclose(pagnn_losses[-1], linear_losses[-1])
+
+
+def test_bias():
+    for _ in range(10):
+        X = torch.arange(100).float()
+        X = (X - X.mean()) / X.std()
+
+        T = torch.tensor(X.numpy() + np.random.uniform(low=-10, high=10))
+        # T = (T - T.mean()) / T.std()
+
+        linear = torch.nn.Linear(1, 1)
+        pagnn = PAGNNLayer(1, 1, 0, retain_state=False)
+
+        linear_losses = fit(X, T, linear)
+        pagnn_losses = fit(X, T, pagnn)
+
+        print('linear loss history', linear_losses)
+        print('pagnn loss history', pagnn_losses)
+
+        assert np.allclose(pagnn_losses[-1], linear_losses[-1])
+
+
+"""
+def test_nonlinear_regression():
+    for _ in range(10):
+        X = torch.arange(0, 20, step=0.05).float()
+        T = torch.tensor(np.random.uniform(low=-100, high=100) * np.sin(X.numpy()) + np.random.uniform(low=-100, high=100))
+
+        # normalize the data
+        X = (X - X.mean()) / X.std()
+        T = (T - T.mean()) / T.std()
+
+        linear = torch.nn.Linear(1, 1)
+        pagnn = PAGNNLayer(1, 1, 0, steps=2, retain_state=False)
+
+        linear_losses = fit(X, T, linear, epochs=50)
+        pagnn_losses = fit(X, T, pagnn, epochs=50)
+
+        print('linear loss history', linear_losses)
+        print('pagnn loss history', pagnn_losses)
+
+        assert np.allclose(pagnn_losses[-1], linear_losses[-1])
+"""
