@@ -9,7 +9,7 @@ class PAGNNLayer(torch.nn.Module):
     def __init__(self, input_neurons, output_neurons, extra_neurons, steps=1, sparsity=0, retain_state=True, activation=None):
         super(PAGNNLayer, self).__init__()
 
-        assert input_neurons > 0 and output_neurons > 0 and extra_neurons >= 0 and sparsity >= 0
+        assert input_neurons > 0 and output_neurons > 0 and extra_neurons >= 0 and sparsity >= 0 and steps >= 1
 
         if sparsity > 0:
             raise NotImplemented()
@@ -23,6 +23,8 @@ class PAGNNLayer(torch.nn.Module):
 
         if activation is None:
             activation = lambda x: x
+        elif steps == 1:
+            raise Exception('If activation is provided, but steps = 1, the activation will not be used.')
         
         self.weight = torch.nn.Parameter(torch.zeros((self._total_neurons, self._total_neurons)))
         self.bias = torch.nn.Parameter(torch.zeros(self._total_neurons))
