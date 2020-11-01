@@ -8,3 +8,4 @@ word2vec/
 *.pdf
 *.json
 *.tar
+*.pyc
