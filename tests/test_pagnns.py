@@ -15,7 +15,6 @@ def test_pagnn_op():
     state = np.array([1, 0, 0])
     expected_next_state = state.dot(topo)
     actual_next_state = _pagnn_op(torch.tensor(state), torch.tensor(topo))
-    
     assert np.array_equal(actual_next_state, expected_next_state)
 
     # add a recurrent connection
@@ -129,7 +128,7 @@ class NonLinear(torch.nn.Module):
 
 
 def test_nonlinear_regression():
-    for _ in range(1):
+    for _ in range(10):
         X = torch.arange(0, 2, step=0.05).float()
         T = torch.tensor(np.random.uniform(low=-100, high=100) * np.sin(X.numpy()) + np.random.uniform(low=-100, high=100))
 
@@ -138,15 +137,15 @@ def test_nonlinear_regression():
         T = (T - T.mean()) / T.std()
 
         nonlinear = NonLinear(1, 10, 1)
-        pagnn = PAGNNLayer(1, 1, 0, steps=2, retain_state=False)
+        pagnn = PAGNNLayer(1, 1, 5, steps=2, retain_state=False, activation=F.relu)
 
-        nonlinear_losses, nonlinear_Y = fit(X, T, nonlinear, lr=0.01, epochs=150, return_inferences=True)
-        pagnn_losses, pagnn_Y = fit(X, T, pagnn, epochs=50, return_inferences=True)
+        nonlinear_losses, nonlinear_Y = fit(X, T, nonlinear, lr=0.01, epochs=200, return_inferences=True)
+        pagnn_losses, pagnn_Y = fit(X, T, pagnn, lr=0.01, epochs=200, return_inferences=True)
 
         print('nonlinear loss history', nonlinear_losses)
         print('pagnn loss history', pagnn_losses)
 
-        is_allclose = np.allclose(pagnn_losses[-1], nonlinear_losses[-1])
+        is_allclose = np.allclose(pagnn_losses[-1], nonlinear_losses[-1], rtol=0.01, atol=0.01) 
         
         if not is_allclose:
             plt.plot(X, T, label='data')
