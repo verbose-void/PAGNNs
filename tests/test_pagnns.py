@@ -1,6 +1,10 @@
 import torch
+import torch.nn.functional as F
+
 import numpy as np
 from pagnn.pagnn import PAGNNLayer, _pagnn_op
+
+import matplotlib.pyplot as plt
 
 
 def test_pagnn_op():
@@ -43,8 +47,8 @@ def test_pagnn_op():
         assert np.allclose(actual_next_state.numpy(), expected_next_state)
 
 
-def fit(X, T, model, epochs=10):
-    optimizer = torch.optim.SGD(lr=0.01, params=model.parameters())
+def fit(X, T, model, epochs=10, lr=0.01, return_inferences=False):
+    optimizer = torch.optim.SGD(lr=lr, params=model.parameters())
     criterion = torch.nn.MSELoss()
 
     losses = []
@@ -58,6 +62,14 @@ def fit(X, T, model, epochs=10):
             loss.backward()
             optimizer.step()
         losses.append(loss_sum / len(T))
+
+
+
+    if return_inferences:
+        inferences = []
+        for x in X:
+            inferences.append(model(x.unsqueeze(0)))
+        return losses, inferences
     return losses
 
 
@@ -102,24 +114,45 @@ def test_bias():
         assert np.allclose(pagnn_losses[-1], linear_losses[-1])
 
 
-"""
+class NonLinear(torch.nn.Module):
+    def __init__(self, in_features, hidden_features, out_features):
+        super().__init__()
+        self.fc1 = torch.nn.Linear(in_features, hidden_features)
+        self.fc2 = torch.nn.Linear(hidden_features, hidden_features)
+        self.fc3 = torch.nn.Linear(hidden_features, out_features)
+    
+    def forward(self, x):
+        y = F.relu(self.fc1(x))
+        y = F.relu(self.fc2(y))
+        y = self.fc3(y)
+        return y
+
+
 def test_nonlinear_regression():
-    for _ in range(10):
-        X = torch.arange(0, 20, step=0.05).float()
+    for _ in range(1):
+        X = torch.arange(0, 2, step=0.05).float()
         T = torch.tensor(np.random.uniform(low=-100, high=100) * np.sin(X.numpy()) + np.random.uniform(low=-100, high=100))
 
         # normalize the data
         X = (X - X.mean()) / X.std()
         T = (T - T.mean()) / T.std()
 
-        linear = torch.nn.Linear(1, 1)
+        nonlinear = NonLinear(1, 10, 1)
         pagnn = PAGNNLayer(1, 1, 0, steps=2, retain_state=False)
 
-        linear_losses = fit(X, T, linear, epochs=50)
-        pagnn_losses = fit(X, T, pagnn, epochs=50)
+        nonlinear_losses, nonlinear_Y = fit(X, T, nonlinear, lr=0.01, epochs=150, return_inferences=True)
+        pagnn_losses, pagnn_Y = fit(X, T, pagnn, epochs=50, return_inferences=True)
 
-        print('linear loss history', linear_losses)
+        print('nonlinear loss history', nonlinear_losses)
         print('pagnn loss history', pagnn_losses)
 
-        assert np.allclose(pagnn_losses[-1], linear_losses[-1])
-"""
+        is_allclose = np.allclose(pagnn_losses[-1], nonlinear_losses[-1])
+        
+        if not is_allclose:
+            plt.plot(X, T, label='data')
+            plt.plot(X, nonlinear_Y, label='baseline predictions')
+            plt.plot(X, pagnn_Y, label='pagnn predictions')
+            plt.legend()
+            plt.show()
+
+        assert is_allclose
