@@ -8,6 +8,10 @@ import pandas as pd
 from tqdm import tqdm
 
 
+def count_params(model):
+    return sum(dict((p.data_ptr(), p.numel()) for p in model.parameters()).values())
+
+
 class FFNN(torch.nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
         super().__init__()

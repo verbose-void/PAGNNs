@@ -5,12 +5,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 from pagnn.pagnn import PAGNNLayer
-from pagnn.utils.comparisons import FFNN, one_hot, separate_targets, get_train_and_test, get_dataloaders, compare
+from pagnn.utils.comparisons import FFNN, one_hot, separate_targets, get_train_and_test, get_dataloaders, compare, count_params
 from pagnn.utils.visualize import draw_networkx_graph
-
-
-def count_params(model):
-    return sum(dict((p.data_ptr(), p.numel()) for p in model.parameters()).values())
 
 
 if __name__ == '__main__':
