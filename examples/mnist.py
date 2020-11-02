@@ -98,5 +98,5 @@ if __name__ == '__main__':
     draw_networkx_graph(pagnn['model'], mode='scaled_weights')
     plt.title('%s architecture' % pagnn['name'])
 
-    plt.savefig('examples/figures/mushroom_classification.png', transparent=True)
+    plt.savefig('examples/figures/mnist.png', transparent=True)
     plt.show()
