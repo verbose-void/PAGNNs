@@ -10,5 +10,14 @@
 
 ## Comparisons:
 
+### Time Series Prediction:
+![](examples/figures/time_series.png)
+
 ### Iris Classification:
 ![](examples/figures/iris_classification.png)
+
+### MNIST:
+![](examples/figures/mnist.png)
+
+### Mushroom Classification:
+![](examples/figures/mushroom_classification.png)
