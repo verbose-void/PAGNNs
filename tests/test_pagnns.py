@@ -46,34 +46,88 @@ def test_pagnn_op():
         assert np.allclose(actual_next_state.numpy(), expected_next_state)
 
 
-def fit(X, T, model, epochs=10, lr=0.01, return_inferences=False):
+def test_pagnn_op_with_batches():
+    # simple case
+    topo = np.array([[0, 1, 1],
+                     [0, 0, 0],
+                     [0, 0, 0]])
+    state = np.array([[1, 0, 0],
+                      [0, 1, 1]])
+    expected_next_state = state.dot(topo)
+    actual_next_state = _pagnn_op(torch.tensor(state), torch.tensor(topo))
+    assert np.array_equal(actual_next_state, expected_next_state)
+
+    # add a recurrent connection
+    topo = np.array([[0, 1, 1],
+                     [0, 1, 0],
+                     [0, 0, 0]])
+    state = np.array([[1, 1, 0],
+                      [1, 1, 1]])
+    expected_next_state = state.dot(topo)
+    actual_next_state = _pagnn_op(torch.tensor(state), torch.tensor(topo))
+    assert np.array_equal(actual_next_state, expected_next_state)
+
+    # add a recurrent connection & some more nodes
+    topo = np.array([[0, 1, 1, 0],
+                     [0, 1, 0, 0],
+                     [0, 1, 0, 0],
+                     [1, 0, 0, 0]])
+    state = np.array([[1, 1, 0, 1],
+                      [0, 0, 1, 0]])
+    expected_next_state = state.dot(topo)
+    actual_next_state = _pagnn_op(torch.tensor(state), torch.tensor(topo))
+    assert np.array_equal(actual_next_state, expected_next_state)
+
+    # do some random tests
+    for _ in range(20):
+        N = np.random.randint(1, 5)
+        D = np.random.randint(5, 20)
+        topo = np.random.uniform(size=(D, D))
+        state = np.random.uniform(size=(N, D))
+        expected_next_state = state.dot(topo)
+        actual_next_state = _pagnn_op(torch.tensor(state), torch.tensor(topo))
+        assert np.allclose(actual_next_state.numpy(), expected_next_state)
+
+
+def fit(X, T, model, epochs=10, lr=0.01, return_inferences=False, batch_size=1):
     optimizer = torch.optim.SGD(lr=lr, params=model.parameters())
     criterion = torch.nn.MSELoss()
+    dataset = torch.utils.data.TensorDataset(X, T)
+    dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size)
 
     losses = []
     for epoch in range(epochs):
         loss_sum = 0
-        for x, t in zip(X, T):
+        for x, t in dataloader:
             optimizer.zero_grad()
-            y = model(x.unsqueeze(0))
-            loss = criterion(y, t.unsqueeze(0))
+
+            if batch_size > 1:
+                x = x.unsqueeze(1)
+                t = t.unsqueeze(1)
+
+            y = model(x)
+            loss = criterion(y, t)
             loss_sum += loss.item()
             loss.backward()
             optimizer.step()
-        losses.append(loss_sum / len(T))
-
-
+        losses.append(loss_sum / len(dataloader))
 
     if return_inferences:
         inferences = []
-        for x in X:
-            inferences.append(model(x.unsqueeze(0)))
+        for x, _ in dataloader:
+            if batch_size > 1:
+                x = x.unsqueeze(1)
+                inferences.extend(model(x))
+            else:
+                inferences.append(model(x))
         return losses, inferences
     return losses
 
 
 def test_linear_regression():
-    for _ in range(10):
+    for batch_size in range(1, 10):
+        print(batch_size) 
+
         X = torch.arange(100).float()
         T = torch.tensor(np.random.uniform(low=-100, high=100) * X.numpy() + np.random.uniform(low=-100, high=100))
 
@@ -84,17 +138,18 @@ def test_linear_regression():
         linear = torch.nn.Linear(1, 1)
         pagnn = PAGNNLayer(1, 1, 0, retain_state=False)
 
-        linear_losses = fit(X, T, linear)
-        pagnn_losses = fit(X, T, pagnn)
+        linear_losses = fit(X, T, linear, epochs=20, batch_size=batch_size)
+        pagnn_losses = fit(X, T, pagnn, epochs=20, batch_size=batch_size)
 
         print('linear loss history', linear_losses)
         print('pagnn loss history', pagnn_losses)
 
-        assert np.allclose(pagnn_losses[-1], linear_losses[-1])
+        is_allclose = np.allclose(pagnn_losses[-1], linear_losses[-1], rtol=0.001, atol=0.001) 
+        assert is_allclose
 
 
 def test_bias():
-    for _ in range(10):
+    for batch_size in range(1, 5):
         X = torch.arange(100).float()
         X = (X - X.mean()) / X.std()
 
@@ -104,13 +159,14 @@ def test_bias():
         linear = torch.nn.Linear(1, 1)
         pagnn = PAGNNLayer(1, 1, 0, retain_state=False)
 
-        linear_losses = fit(X, T, linear)
-        pagnn_losses = fit(X, T, pagnn)
+        linear_losses = fit(X, T, linear, batch_size=batch_size)
+        pagnn_losses = fit(X, T, pagnn, batch_size=batch_size)
 
         print('linear loss history', linear_losses)
         print('pagnn loss history', pagnn_losses)
 
-        assert np.allclose(pagnn_losses[-1], linear_losses[-1])
+        is_allclose = np.allclose(pagnn_losses[-1], linear_losses[-1], rtol=0.1, atol=0.1) 
+        assert is_allclose
 
 
 class NonLinear(torch.nn.Module):
@@ -128,7 +184,7 @@ class NonLinear(torch.nn.Module):
 
 
 def test_nonlinear_regression():
-    for _ in range(10):
+    for batch_size in range(1, 4):
         X = torch.arange(0, 2, step=0.05).float()
         T = torch.tensor(np.random.uniform(low=-100, high=100) * np.sin(X.numpy()) + np.random.uniform(low=-100, high=100))
 
@@ -139,8 +195,8 @@ def test_nonlinear_regression():
         nonlinear = NonLinear(1, 10, 1)
         pagnn = PAGNNLayer(1, 1, 5, steps=2, retain_state=False, activation=F.relu)
 
-        nonlinear_losses, nonlinear_Y = fit(X, T, nonlinear, lr=0.01, epochs=200, return_inferences=True)
-        pagnn_losses, pagnn_Y = fit(X, T, pagnn, lr=0.01, epochs=200, return_inferences=True)
+        nonlinear_losses, nonlinear_Y = fit(X, T, nonlinear, lr=0.05, epochs=200, return_inferences=True, batch_size=batch_size)
+        pagnn_losses, pagnn_Y = fit(X, T, pagnn, lr=0.05, epochs=200, return_inferences=True, batch_size=batch_size)
 
         print('nonlinear loss history', nonlinear_losses)
         print('pagnn loss history', pagnn_losses)
