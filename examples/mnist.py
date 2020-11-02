@@ -30,7 +30,7 @@ if __name__ == '__main__':
     linear_model = torch.nn.Linear(D, C)
     linear_model.to(device)
     linear = {
-        'name': 'Linear(%i, %i, #p=%i)' % (D, C, count_params(linear_model)),
+        'name': 'Linear(#p=%i)' % (count_params(linear_model)),
         'model': linear_model,
         'optimizer': torch.optim.Adam(linear_model.parameters(), lr=linear_lr),
     }
@@ -57,9 +57,9 @@ if __name__ == '__main__':
         pagnn_model = PAGNNLayer(D, C, extra_neurons, steps=config['num_steps'], retain_state=False, activation=activation_func) # graph_generator=nx.generators.classic.complete_graph)
         pagnn_model.to(device)
         if config['activation'] is None:
-            model_name = 'PAGNNLayer(n=%i, #p=%i, steps=%i)' % (n, count_params(pagnn_model), config['num_steps'])
+            model_name = 'PAGNN(#p=%i, steps=%i)' % (count_params(pagnn_model), config['num_steps'])
         else:
-            model_name = 'PAGNNLayer(n=%i, #p=%i, steps=%i) + %s' % (n, count_params(pagnn_model), config['num_steps'], config['activation'])
+            model_name = 'PAGNN(#p=%i, steps=%i) + %s' % (count_params(pagnn_model), config['num_steps'], config['activation'])
         pagnn = {
             'name': model_name,
             'model': pagnn_model,
@@ -73,7 +73,7 @@ if __name__ == '__main__':
     ffnn_model = FFNN(D, D, C)
     ffnn_model.to(device)
     ffnn = {
-        'name': 'FFNN(%i, %i, %i, #p=%i)' % (D, D, C, count_params(ffnn_model)),
+        'name': 'FFNN(#p=%i)' % (count_params(ffnn_model)),
         'model': ffnn_model,
         'optimizer': torch.optim.Adam(ffnn_model.parameters(), lr=ffnn_lr),
     }
@@ -90,14 +90,14 @@ if __name__ == '__main__':
     fig = plt.figure(figsize=(16, 9))
     fig.suptitle('MNIST - (PAGNN vs FFNN vs Linear)', fontsize=24)
 
-    plt.subplot(211)
+    plt.subplot(221)
     for model_dict in model_dicts:
         plt.plot(model_dict['train_history'], label=model_dict['name'])
     # plt.plot(ffnn['train_history'], label='FFNN (lr: %f)' % ffnn_lr)
     plt.legend()
     plt.title('train loss')
 
-    plt.subplot(212)
+    plt.subplot(222)
     for model_dict in model_dicts:
         plt.plot(model_dict['test_history'], label=model_dict['name'])
     # plt.plot(ffnn['test_history'], label='FFNN')
