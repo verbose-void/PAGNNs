@@ -25,9 +25,6 @@ class PAGNNLayer(torch.nn.Module):
         if sparsity > 0:
             raise NotImplemented()
 
-        if retain_state:
-            raise NotImplemented()
-
         self._total_neurons = input_neurons + output_neurons + extra_neurons
         self._input_neurons = input_neurons
         self._output_neurons = output_neurons
@@ -45,6 +42,9 @@ class PAGNNLayer(torch.nn.Module):
         self.state = None
         self.activation = activation
         torch.nn.init.kaiming_uniform_(self.weight, mode='fan_in')
+
+        if retain_state:
+            self.reset_state(self._total_neurons)
 
     def to(self, device, *args, **kwargs):
         self.device = device
