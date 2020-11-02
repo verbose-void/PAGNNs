@@ -16,8 +16,8 @@ if __name__ == '__main__':
 
     train_dataset = torchvision.datasets.MNIST('datasets', download=True, train=True, transform=transform)
     test_dataset = torchvision.datasets.MNIST('datasets', download=True, train=False, transform=transform)
-    train_dl = torch.utils.data.DataLoader(train_dataset, batch_size=64)
-    test_dl = torch.utils.data.DataLoader(test_dataset, batch_size=64)
+    train_dl = torch.utils.data.DataLoader(train_dataset, batch_size=64, num_workers=6)
+    test_dl = torch.utils.data.DataLoader(test_dataset, batch_size=64, num_workers=6)
 
     D = 28*28
     C = 10
