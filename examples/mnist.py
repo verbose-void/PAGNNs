@@ -26,7 +26,7 @@ if __name__ == '__main__':
 
     model_dicts = []
 
-    linear_lr = 0.005
+    linear_lr = 0.001
     linear_model = torch.nn.Linear(D, C)
     linear_model.to(device)
     linear = {
@@ -46,7 +46,7 @@ if __name__ == '__main__':
     ]
 
     for config in configs:
-        pagnn_lr = 0.005
+        pagnn_lr = 0.001
         extra_neurons = 0
         n = D + C + extra_neurons
         activation_func = None
@@ -69,7 +69,7 @@ if __name__ == '__main__':
 
         model_dicts.append(pagnn)
 
-    ffnn_lr = 0.005
+    ffnn_lr = 0.001
     ffnn_model = FFNN(D, D, C)
     ffnn_model.to(device)
     ffnn = {
