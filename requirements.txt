@@ -1,4 +1,8 @@
 numpy
+networkx
+tqdm
 torch
+pandas
+torchvision
 matplotlib
 sklearn
