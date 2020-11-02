@@ -1,9 +1,13 @@
 import torch
-import numpy as np
+import torch.nn.functional as F
 from torch import nn
+import numpy as np
 import seaborn as sns
 from sklearn.preprocessing import MinMaxScaler
 import matplotlib.pyplot as plt
+
+from pagnn.pagnn import PAGNNLayer
+from pagnn.utils.comparisons import count_params
 
 
 class LSTM(nn.Module):
@@ -36,6 +40,11 @@ def create_inout_sequences(input_data, tw):
 
 
 if __name__ == '__main__':
+    seed = 666
+    if seed is not None:
+        torch.manual_seed(seed)
+        np.random.seed(seed)
+
     flight_data = sns.load_dataset('flights')
     
     # plot passengers over time
@@ -71,30 +80,42 @@ if __name__ == '__main__':
     loss_function = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
-    epochs = 500
+    pagnn_model = PAGNNLayer(12, 1, 20, steps=5, activation=F.relu, retain_state=False).to(device)
+    pagnn_optimizer = torch.optim.Adam(pagnn_model.parameters(), lr=0.001)
+
+    epochs = 300
 
     for i in range(epochs):
         for seq, labels in train_inout_seq:
             seq = seq.to(device)
             labels = labels.to(device)
+
             optimizer.zero_grad()
+            pagnn_optimizer.zero_grad()
+
             model.hidden_cell = (torch.zeros(1, 1, model.hidden_layer_size, device=device),
                             torch.zeros(1, 1, model.hidden_layer_size, device=device))
     
             y_pred = model(seq)
+            y_pred_pagnn = pagnn_model(seq)
     
             single_loss = loss_function(y_pred, labels)
             single_loss.backward()
             optimizer.step()
+
+            pagnn_single_loss = loss_function(y_pred_pagnn, labels)
+            pagnn_single_loss.backward()
+            pagnn_optimizer.step()
     
         if i%25 == 1:
-            print(f'epoch: {i:3} loss: {single_loss.item():10.8f}')
+            print(f'epoch: {i:3} LSTM loss: {single_loss.item():10.8f} PAGNN loss: {pagnn_single_loss.item():10.8f}')
     
-    print(f'epoch: {i:3} loss: {single_loss.item():10.10f}')
+    print(f'epoch: {i:3} LSTM loss: {single_loss.item():10.10f} PAGNN loss: {pagnn_single_loss.item():10.10f}')
 
     fut_pred = 12
 
     test_inputs = train_data_normalized[-train_window:].tolist()
+    pagnn_test_inputs = train_data_normalized[-train_window:].tolist()
 
     model.eval()
     for i in range(fut_pred):
@@ -103,9 +124,15 @@ if __name__ == '__main__':
             model.hidden = (torch.zeros(1, 1, model.hidden_layer_size, device=device),
                             torch.zeros(1, 1, model.hidden_layer_size, device=device))
             test_inputs.append(model(seq).item())
+            pagnn_test_inputs.append(pagnn_model(seq).item())
 
     actual_predictions = scaler.inverse_transform(np.array(test_inputs[train_window:] ).reshape(-1, 1))
+    pagnn_actual_predictions = scaler.inverse_transform(np.array(pagnn_test_inputs[train_window:] ).reshape(-1, 1))
 
+    fig = plt.figure(figsize=(16, 9))
+    fig.suptitle('Time Series Prediction - (PAGNN vs LSTM)', fontsize=24)
+
+    plt.subplot(211)
     x = np.arange(132, 144, 1)
     plt.title('Month vs Passenger')
     plt.ylabel('Total Passengers')
@@ -113,15 +140,18 @@ if __name__ == '__main__':
     plt.autoscale(axis='x', tight=True)
     plt.plot(flight_data['passengers'], label='Ground Truth')
     plt.plot(x,actual_predictions, label='LSTM predictions')
+    plt.plot(x,pagnn_actual_predictions, label='PAGNN predictions')
     plt.legend()
-    plt.show()
 
     plt.title('Month vs Passenger')
     plt.ylabel('Total Passengers')
     plt.grid(True)
     plt.autoscale(axis='x', tight=True)
     
+    plt.subplot(212)
     plt.plot(flight_data['passengers'][-train_window:], label='Ground Truth')
-    plt.plot(x,actual_predictions, label='LSTM predictions')
+    plt.plot(x,actual_predictions, label='LSTM predictions (%i params)' % count_params(model))
+    plt.plot(x,pagnn_actual_predictions, label='PAGNN predictions (%i params)' % count_params(pagnn_model))
     plt.legend()
+    plt.savefig('examples/figures/time_series.png', transparent=True)
     plt.show()
