@@ -1,8 +1,17 @@
 import torch
 
 
-def _pagnn_op(state, weight):
-    return state.matmul(weight)
+def _pagnn_op(state, weight, bias=None):
+    if state.dim() == 2 and bias is not None:
+        # fused op is marginally faster
+        ret = torch.addmm(bias, state, weight)
+    else:
+        output = state.matmul(weight)
+        if bias is not None:
+            output += bias
+        ret = output
+    # return state.matmul(weight)
+    return ret
 
 
 class PAGNNLayer(torch.nn.Module):
@@ -34,7 +43,7 @@ class PAGNNLayer(torch.nn.Module):
 
     def step(self, n=1):
         for step in range(n):
-            self.state = _pagnn_op(self.state, self.weight) + self.bias
+            self.state = _pagnn_op(self.state, self.weight, self.bias)
             if step < n-1:
                 self.state = self.activation(self.state)
 
@@ -44,9 +53,23 @@ class PAGNNLayer(torch.nn.Module):
         return self.extract_output_neurons_data()
 
     def load_input_neurons(self, x):
-        if not self._retain_state:
-            self.state = torch.zeros(self._total_neurons)
-        self.state[:self._input_neurons] = x
+        if len(x.shape) == 1:
+            assert x.shape[0] == self._input_neurons
+            if not self._retain_state:
+                self.state = torch.zeros(self._total_neurons)
+            self.state[:self._input_neurons] = x
+
+        elif len(x.shape) == 2:
+            assert x.shape[1] == self._input_neurons
+            if not self._retain_state:
+                self.state = torch.zeros((x.shape[0], self._total_neurons))
+            self.state[:, :self._input_neurons] = x
+
+        else:
+            raise Exception()
 
     def extract_output_neurons_data(self):
-        return self.state[-self._output_neurons:] # self.state[:, -self._output_neurons:] # for batches
+        if len(self.state.shape) == 1:
+            return self.state[-self._output_neurons:] # self.state[:, -self._output_neurons:] # for batches
+        return self.state[:, -self._output_neurons:]
+
