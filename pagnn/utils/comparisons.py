@@ -82,15 +82,15 @@ def compare(model_dicts, train_dl, test_dl, epochs, criterion, use_tqdm=True, te
                         iterator = tqdm(iterator, desc='[train] %s' % (model_name), total=len(iterator))
 
                     for x, t in iterator:
-                        x = x.to(device)
-                        t = t.to(device)
+                        x = x.to(device) #.unsqueeze(0)
+                        t = t.to(device) #.unsqueeze(0)
 
                         optimizer.zero_grad()
 
-                        if 'num_steps' in model_dict:
-                            y = model(x, num_steps=model_dict['num_steps'])
-                        else:
-                            y = model(x)
+                        # if 'num_steps' in model_dict:
+                            # y = model(x, num_steps=model_dict['num_steps'])
+                        # else:
+                        y = model(x)
 
                         loss = criterion(y, t)
                         total_loss += loss.item()
