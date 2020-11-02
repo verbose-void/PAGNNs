@@ -11,13 +11,17 @@
 ## Comparisons:
 
 ### Time Series Prediction:
+[Source Code](examples/time_series.py)
 ![](examples/figures/time_series.png)
 
 ### Iris Classification:
+[Source Code](examples/iris_classification.py)
 ![](examples/figures/iris_classification.png)
 
 ### MNIST:
+[Source Code](examples/mnist.py)
 ![](examples/figures/mnist.png)
 
 ### Mushroom Classification:
+[Source Code](examples/mushroom_classification.py)
 ![](examples/figures/mushroom_classification.png)
