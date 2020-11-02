@@ -4,5 +4,8 @@ tqdm
 torch
 pandas
 torchvision
+torchtext
+seaborn
+nltk
 matplotlib
 sklearn
