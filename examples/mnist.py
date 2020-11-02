@@ -90,14 +90,14 @@ if __name__ == '__main__':
     fig = plt.figure(figsize=(16, 9))
     fig.suptitle('MNIST - (PAGNN vs FFNN vs Linear)', fontsize=24)
 
-    plt.subplot(221)
+    plt.subplot(211)
     for model_dict in model_dicts:
         plt.plot(model_dict['train_history'], label=model_dict['name'])
     # plt.plot(ffnn['train_history'], label='FFNN (lr: %f)' % ffnn_lr)
     plt.legend()
     plt.title('train loss')
 
-    plt.subplot(222)
+    plt.subplot(212)
     for model_dict in model_dicts:
         plt.plot(model_dict['test_history'], label=model_dict['name'])
     # plt.plot(ffnn['test_history'], label='FFNN')
