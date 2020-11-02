@@ -26,7 +26,7 @@ if __name__ == '__main__':
 
     model_dicts = []
 
-    linear_lr = 0.01
+    linear_lr = 0.005
     linear_model = torch.nn.Linear(D, C)
     linear_model.to(device)
     linear = {
@@ -38,18 +38,30 @@ if __name__ == '__main__':
     model_dicts.append(linear)
 
     configs = [
-        {'num_steps': 1},
-        {'num_steps': 3},
+        {'num_steps': 1, 'activation': None},
+        {'num_steps': 3, 'activation': None},
+        {'num_steps': 5, 'activation': None},
+        {'num_steps': 3, 'activation': 'relu'},
+        {'num_steps': 5, 'activation': 'relu'},
     ]
 
     for config in configs:
-        pagnn_lr = 0.001
+        pagnn_lr = 0.005
         extra_neurons = 0
         n = D + C + extra_neurons
-        pagnn_model = PAGNNLayer(D, C, extra_neurons, steps=config['num_steps'], retain_state=False) # graph_generator=nx.generators.classic.complete_graph)
+        activation_func = None
+        if config['activation'] == 'relu':
+            activation_func = F.relu
+        elif config['activation'] is not None:
+            raise Exception()
+        pagnn_model = PAGNNLayer(D, C, extra_neurons, steps=config['num_steps'], retain_state=False, activation=activation_func) # graph_generator=nx.generators.classic.complete_graph)
         pagnn_model.to(device)
+        if config['activation'] is None:
+            model_name = 'PAGNNLayer(n=%i, #p=%i, steps=%i)' % (n, count_params(pagnn_model), config['num_steps'])
+        else:
+            model_name = 'PAGNNLayer(n=%i, #p=%i, steps=%i) + %s' % (n, count_params(pagnn_model), config['num_steps'], config['activation'])
         pagnn = {
-            'name': 'PAGNNLayer(n=%i, #p=%i, steps=%i)' % (n, count_params(pagnn_model), config['num_steps']),
+            'name': model_name,
             'model': pagnn_model,
             # 'num_steps': config['num_steps'],
             'optimizer': torch.optim.Adam(pagnn_model.parameters(), lr=pagnn_lr),
@@ -57,7 +69,7 @@ if __name__ == '__main__':
 
         model_dicts.append(pagnn)
 
-    ffnn_lr = 0.0001
+    ffnn_lr = 0.005
     ffnn_model = FFNN(D, D, C)
     ffnn_model.to(device)
     ffnn = {
@@ -72,7 +84,7 @@ if __name__ == '__main__':
     # print('ffnn num params:', sum(p.numel() for p in ffnn_model.parameters()))
 
     criterion = F.cross_entropy
-    epochs = 25
+    epochs = 10
     compare(model_dicts, train_dl, test_dl, epochs, criterion, test_accuracy=True, device=device, flat_dim=1)
     
     fig = plt.figure(figsize=(16, 9))
@@ -92,11 +104,13 @@ if __name__ == '__main__':
     plt.legend()
     plt.title('test accuracy')
 
+    """ ARCH TOO BIG
     plt.subplot(212)
     print('creating graph...')
     pagnn = model_dicts[-2] # get the last pagnn network defined
     draw_networkx_graph(pagnn['model'], mode='scaled_weights')
     plt.title('%s architecture' % pagnn['name'])
+    """
 
     plt.savefig('examples/figures/mnist.png', transparent=True)
     plt.show()
