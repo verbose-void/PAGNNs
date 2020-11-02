@@ -57,17 +57,29 @@ if __name__ == '__main__':
 
     model_dicts = []
     configs = [
-        {'initial_sparsity': 0, 'num_steps': 3},
+        {'num_steps': 1, 'activation': None},
+        {'num_steps': 2, 'activation': None},
+        {'num_steps': 3, 'activation': None},
+        # {'num_steps': 1, 'activation': 'relu'}, # doesn't work
+        {'num_steps': 2, 'activation': 'relu'},
+        {'num_steps': 3, 'activation': 'relu'},
     ]
 
     for config in configs:
         pagnn_lr = 0.01
         extra_neurons = 0
         n = D + C + extra_neurons
-        pagnn_model = PAGNNLayer(D, C, extra_neurons, steps=config['num_steps'], retain_state=False, activation=F.relu) # graph_generator=nx.generators.classic.complete_graph)
+        activation_func = None
+        if config['activation'] == 'relu':
+            activation_func = F.relu
+        pagnn_model = PAGNNLayer(D, C, extra_neurons, steps=config['num_steps'], retain_state=False, activation=activation_func) # graph_generator=nx.generators.classic.complete_graph)
         pagnn_model.to(device)
+        if config['activation'] is None:
+            model_name = 'PAGNNLayer(n=%i, #p=%i, num_steps=%i)' % (n, count_params(pagnn_model), config['num_steps'])
+        else:
+            model_name = 'PAGNNLayer(n=%i, #p=%i, num_steps=%i) + %s' % (n, count_params(pagnn_model), config['num_steps'], str(config['activation']))
         pagnn = {
-            'name': 'PAGNNLayer(neurons=%i, total_params=%i)' % (n, count_params(pagnn_model)),
+            'name': model_name,
             'model': pagnn_model,
             # 'num_steps': config['num_steps'],
             'optimizer': torch.optim.Adam(pagnn_model.parameters(), lr=pagnn_lr),
@@ -79,7 +91,7 @@ if __name__ == '__main__':
     ffnn_model = FFNN(D, D, C)
     ffnn_model.to(device)
     ffnn = {
-        'name': 'FFNN(%i, %i, %i, total_params=%i)' % (D, D, C, count_params(ffnn_model)),
+        'name': 'FFNN(%i, %i, %i, #p=%i)' % (D, D, C, count_params(ffnn_model)),
         'model': ffnn_model,
         'optimizer': torch.optim.Adam(ffnn_model.parameters(), lr=ffnn_lr),
     }
