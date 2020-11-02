@@ -11,4 +11,4 @@
 ## Comparisons:
 
 ### Iris Classification:
-[](examples/figures/iris_classification.png)
+![](examples/figures/iris_classification.png)
