@@ -1,5 +1,9 @@
 # PAGNNs
 
+**WARNING: PAGNNs are currently under VERY ACTIVE research. These results & comparisons are very early in it's lifecycle and there is plenty of ground to cover.**
+
+**This is also the very first fully open source AI research project for my new research company that is powered by SharpestMinds mentees. If you are interested in being part of my research team, you may reach out to me via `mccreary@dyllan.ai` or you can apply to be my mentee [here](https://app.sharpestminds.com/u/yGyFBQvfv44iG2JC5?r=dyllan-mccreary). If you'd like to see an idea of the types of researchers I'm looking for, the [GitHub Projects](https://github.com/McCrearyD/PAGNNs/projects) or [Issues](https://github.com/McCrearyD/PAGNNs/issues) pages of this repository has a nice list of things to do!**
+
 ## What are PAGNNs?
 - PAGNN stands for `Persistent Artificial Graph-based Neural Networks`. 
 - It is an artificial neural network architecture inspired by the brain that has no layers, but rather it has 1 square weight matrix `W` that denotes the synaptic weightings between neurons. More generally, this is an [Adjacency Matrix](https://en.wikipedia.org/wiki/Adjacency_matrix) that represents the costs between nodes in a [topological graph](https://en.wikipedia.org/wiki/Topological_graph). 
@@ -18,6 +22,8 @@
 
 ## How do PAGNNs train?
 - After extracting our predicted values in the previous section, we can calculate the loss. PyTorch makes this very easy as it builds a dynamic compute graph that allows us to backpropagate the error. Then, we simply call the optimizer's step function!
+
+**Note: In the current state of the repository, PAGNNs are fully dense. I hypothesize that significantly large, but also sparse PAGNNs can perform significantly better.**
 
 ## Environment Setup:
 
