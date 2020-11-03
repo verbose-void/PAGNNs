@@ -15,7 +15,7 @@ if __name__ == '__main__':
         torch.manual_seed(seed)
         np.random.seed(seed)
 
-    df = pd.read_csv('datasets/mushroom_classification/mushrooms.csv')
+    df = pd.read_csv('datasets/mushrooms.csv')
 
     # one-hot encodings
     df = one_hot(df, 'cap-shape')

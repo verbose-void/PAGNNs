@@ -16,7 +16,7 @@ if __name__ == '__main__':
         np.random.seed(seed)
 
     # load data
-    df = pd.read_csv('datasets/non_linear_classification/iris.csv').dropna()
+    df = pd.read_csv('datasets/iris.csv').dropna()
     df = shuffle(df)
 
     # normalize data
