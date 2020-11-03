@@ -8,6 +8,10 @@ import pandas as pd
 from tqdm import tqdm
 
 
+def count_params(model):
+    return sum(dict((p.data_ptr(), p.numel()) for p in model.parameters()).values())
+
+
 class FFNN(torch.nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
         super().__init__()
@@ -58,7 +62,7 @@ def get_dataloaders(data_tensors, batch_size):
     return train_dl, test_dl
 
 
-def compare(model_dicts, train_dl, test_dl, epochs, criterion, use_tqdm=True, test_accuracy=False, device=torch.device('cpu')):
+def compare(model_dicts, train_dl, test_dl, epochs, criterion, use_tqdm=True, test_accuracy=False, device=torch.device('cpu'), flat_dim=None):
     try:
         for model_dict in model_dicts:
             model_dict['train_history'] = []
@@ -82,6 +86,9 @@ def compare(model_dicts, train_dl, test_dl, epochs, criterion, use_tqdm=True, te
                         iterator = tqdm(iterator, desc='[train] %s' % (model_name), total=len(iterator))
 
                     for x, t in iterator:
+                        if flat_dim is not None:
+                            x = x.flatten(flat_dim)
+
                         x = x.to(device) #.unsqueeze(0)
                         t = t.to(device) #.unsqueeze(0)
 
@@ -113,6 +120,9 @@ def compare(model_dicts, train_dl, test_dl, epochs, criterion, use_tqdm=True, te
                         iterator = tqdm(iterator, desc='[test] %s' % (model_name), total=len(iterator))
 
                     for x, t in iterator:
+                        if flat_dim is not None:
+                            x = x.flatten(flat_dim)
+
                         x = x.to(device)
                         t = t.to(device)
 

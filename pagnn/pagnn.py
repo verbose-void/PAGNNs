@@ -15,7 +15,9 @@ def _pagnn_op(state, weight, bias=None):
 
 
 class PAGNNLayer(torch.nn.Module):
-    def __init__(self, input_neurons, output_neurons, extra_neurons, steps=1, sparsity=0, retain_state=True, activation=None):
+    def __init__(self, input_neurons, output_neurons, extra_neurons, steps=1, sparsity=0, retain_state=True, activation=None, device=torch.device('cpu')):
+        self.device = device
+
         super(PAGNNLayer, self).__init__()
 
         assert input_neurons > 0 and output_neurons > 0 and extra_neurons >= 0 and sparsity >= 0 and steps >= 1
@@ -37,9 +39,22 @@ class PAGNNLayer(torch.nn.Module):
         
         self.weight = torch.nn.Parameter(torch.zeros((self._total_neurons, self._total_neurons)))
         self.bias = torch.nn.Parameter(torch.zeros(self._total_neurons))
+        self.state = None
         self.activation = activation
-        self.state = torch.zeros(self._total_neurons)
         torch.nn.init.kaiming_uniform_(self.weight, mode='fan_in')
+
+        if retain_state:
+            self.reset_state(self._total_neurons)
+
+    def to(self, device, *args, **kwargs):
+        self.device = device
+        super().to(device, *args, **kwargs)
+        if self.state is not None:
+            self.state = self.state.to(device)
+        return self
+
+    def reset_state(self, state_shape):
+        self.state = torch.zeros(state_shape, device=self.device)
 
     def step(self, n=1):
         for step in range(n):
@@ -56,13 +71,13 @@ class PAGNNLayer(torch.nn.Module):
         if len(x.shape) == 1:
             assert x.shape[0] == self._input_neurons
             if not self._retain_state:
-                self.state = torch.zeros(self._total_neurons)
+                self.reset_state(self._total_neurons)
             self.state[:self._input_neurons] = x
 
         elif len(x.shape) == 2:
             assert x.shape[1] == self._input_neurons
             if not self._retain_state:
-                self.state = torch.zeros((x.shape[0], self._total_neurons))
+                self.reset_state((x.shape[0], self._total_neurons))
             self.state[:, :self._input_neurons] = x
 
         else:
@@ -70,6 +85,6 @@ class PAGNNLayer(torch.nn.Module):
 
     def extract_output_neurons_data(self):
         if len(self.state.shape) == 1:
-            return self.state[-self._output_neurons:] # self.state[:, -self._output_neurons:] # for batches
+            return self.state[-self._output_neurons:]
         return self.state[:, -self._output_neurons:]
 

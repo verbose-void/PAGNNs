@@ -48,7 +48,7 @@ def draw_networkx_graph(pagnn, mode='default'):
     elif mode == 'scaled_weights':
         degrees = np.array([G.degree[n] for n in range(pagnn._total_neurons)])
         degrees = degrees - np.min(degrees)
-        degrees = degrees / np.max(degrees)
+        degrees = degrees / max(np.max(degrees), 1)
         degrees *= 200
         degrees += 10
         weightings = np.abs(pagnn.weight.cpu().detach().numpy().flatten())

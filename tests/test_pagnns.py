@@ -7,6 +7,9 @@ from pagnn.pagnn import PAGNNLayer, _pagnn_op
 import matplotlib.pyplot as plt
 
 
+device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+
+
 def test_pagnn_op():
     # simple case
     topo = np.array([[0, 1, 1],
@@ -96,6 +99,7 @@ def fit(X, T, model, epochs=10, lr=0.01, return_inferences=False, batch_size=1):
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size)
 
     losses = []
+    model.train()
     for epoch in range(epochs):
         loss_sum = 0
         for x, t in dataloader:
@@ -104,6 +108,9 @@ def fit(X, T, model, epochs=10, lr=0.01, return_inferences=False, batch_size=1):
             if batch_size > 1:
                 x = x.unsqueeze(1)
                 t = t.unsqueeze(1)
+        
+            x = x.to(device)
+            t = t.to(device)
 
             y = model(x)
             loss = criterion(y, t)
@@ -113,8 +120,11 @@ def fit(X, T, model, epochs=10, lr=0.01, return_inferences=False, batch_size=1):
         losses.append(loss_sum / len(dataloader))
 
     if return_inferences:
+        model.eval()
         inferences = []
         for x, _ in dataloader:
+            x = x.to(device)
+
             if batch_size > 1:
                 x = x.unsqueeze(1)
                 inferences.extend(model(x))
@@ -135,8 +145,8 @@ def test_linear_regression():
         X = (X - X.mean()) / X.std()
         T = (T - T.mean()) / T.std()
 
-        linear = torch.nn.Linear(1, 1)
-        pagnn = PAGNNLayer(1, 1, 0, retain_state=False)
+        linear = torch.nn.Linear(1, 1).to(device)
+        pagnn = PAGNNLayer(1, 1, 0, retain_state=False).to(device)
 
         linear_losses = fit(X, T, linear, epochs=20, batch_size=batch_size)
         pagnn_losses = fit(X, T, pagnn, epochs=20, batch_size=batch_size)
@@ -156,8 +166,8 @@ def test_bias():
         T = torch.tensor(X.numpy() + np.random.uniform(low=-10, high=10))
         # T = (T - T.mean()) / T.std()
 
-        linear = torch.nn.Linear(1, 1)
-        pagnn = PAGNNLayer(1, 1, 0, retain_state=False)
+        linear = torch.nn.Linear(1, 1).to(device)
+        pagnn = PAGNNLayer(1, 1, 0, retain_state=False).to(device)
 
         linear_losses = fit(X, T, linear, batch_size=batch_size)
         pagnn_losses = fit(X, T, pagnn, batch_size=batch_size)
@@ -192,8 +202,8 @@ def test_nonlinear_regression():
         X = (X - X.mean()) / X.std()
         T = (T - T.mean()) / T.std()
 
-        nonlinear = NonLinear(1, 10, 1)
-        pagnn = PAGNNLayer(1, 1, 5, steps=2, retain_state=False, activation=F.relu)
+        nonlinear = NonLinear(1, 10, 1).to(device)
+        pagnn = PAGNNLayer(1, 1, 5, steps=2, retain_state=False, activation=F.relu).to(device)
 
         nonlinear_losses, nonlinear_Y = fit(X, T, nonlinear, lr=0.05, epochs=200, return_inferences=True, batch_size=batch_size)
         pagnn_losses, pagnn_Y = fit(X, T, pagnn, lr=0.05, epochs=200, return_inferences=True, batch_size=batch_size)

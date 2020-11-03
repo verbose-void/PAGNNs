@@ -5,12 +5,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 from pagnn.pagnn import PAGNNLayer
-from pagnn.utils.comparisons import FFNN, one_hot, separate_targets, get_train_and_test, get_dataloaders, compare
+from pagnn.utils.comparisons import FFNN, one_hot, separate_targets, get_train_and_test, get_dataloaders, compare, count_params
 from pagnn.utils.visualize import draw_networkx_graph
-
-
-def count_params(model):
-    return sum(dict((p.data_ptr(), p.numel()) for p in model.parameters()).values())
 
 
 if __name__ == '__main__':
@@ -19,7 +15,7 @@ if __name__ == '__main__':
         torch.manual_seed(seed)
         np.random.seed(seed)
 
-    df = pd.read_csv('datasets/mushroom_classification/mushrooms.csv')
+    df = pd.read_csv('datasets/mushrooms.csv')
 
     # one-hot encodings
     df = one_hot(df, 'cap-shape')
@@ -61,23 +57,31 @@ if __name__ == '__main__':
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
     model_dicts = []
+
+    linear_lr = 0.01
+    linear_model = torch.nn.Linear(D, C)
+    linear_model.to(device)
+    linear = {
+        'name': 'Linear(%i, %i, #p=%i)' % (D, C, count_params(linear_model)),
+        'model': linear_model,
+        'optimizer': torch.optim.Adam(linear_model.parameters(), lr=linear_lr),
+    }
+
+    model_dicts.append(linear)
+
     configs = [
-        {'initial_sparsity': 0, 'num_steps': 5},
-        # {'initial_sparsity': 0.1, 'num_steps': 5},
-        # {'initial_sparsity': 0.5, 'num_steps': 5},
-        # {'initial_sparsity': 0.8, 'num_steps': 5},
-        # {'initial_sparsity': 0.9, 'num_steps': 5},
-        # {'initial_sparsity': 0.98, 'num_steps': 5},
+        {'num_steps': 1},
+        {'num_steps': 3},
     ]
 
     for config in configs:
         pagnn_lr = 0.001
-        extra_neurons = 5
+        extra_neurons = 0
         n = D + C + extra_neurons
         pagnn_model = PAGNNLayer(D, C, extra_neurons, steps=config['num_steps'], retain_state=False) # graph_generator=nx.generators.classic.complete_graph)
         pagnn_model.to(device)
         pagnn = {
-            'name': 'PAGNNLayer(neurons=%i, total_params=%i)' % (n, count_params(pagnn_model)),
+            'name': 'PAGNNLayer(n=%i, #p=%i, steps=%i)' % (n, count_params(pagnn_model), config['num_steps']),
             'model': pagnn_model,
             # 'num_steps': config['num_steps'],
             'optimizer': torch.optim.Adam(pagnn_model.parameters(), lr=pagnn_lr),
@@ -89,7 +93,7 @@ if __name__ == '__main__':
     ffnn_model = FFNN(D, D, C)
     ffnn_model.to(device)
     ffnn = {
-        'name': 'FFNN(%i, %i, %i, total_params=%i)' % (D, D, C, count_params(ffnn_model)),
+        'name': 'FFNN(%i, %i, %i, #p=%i)' % (D, D, C, count_params(ffnn_model)),
         'model': ffnn_model,
         'optimizer': torch.optim.Adam(ffnn_model.parameters(), lr=ffnn_lr),
     }
