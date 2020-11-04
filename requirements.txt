@@ -9,3 +9,4 @@ seaborn
 nltk
 matplotlib
 sklearn
+rigl-torch

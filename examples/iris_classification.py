@@ -105,7 +105,7 @@ if __name__ == '__main__':
     epochs = 25
     compare(model_dicts, train_dl, test_dl, epochs, criterion, test_accuracy=True, device=device)
     
-    fig = plt.figure(figsize=(16, 9))
+    fig = plt.figure(figsize=(24, 14), dpi=60)
     fig.suptitle('Iris Classification - (PAGNN vs FFNN)', fontsize=24)
 
     plt.subplot(221)
