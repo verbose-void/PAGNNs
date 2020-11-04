@@ -43,6 +43,10 @@
 [Source Code](examples/iris_classification.py)
 ![](examples/figures/iris_classification.png)
 
+### Iris Classification Sparse (w/ [RigL](https://github.com/McCrearyD/rigl-torch)):
+[Source Code](examples/sparse_iris_classification.py)
+![](examples/figures/sparse_iris_classification.png)
+
 ### MNIST:
 [Source Code](examples/mnist.py)
 ![](examples/figures/mnist.png)
