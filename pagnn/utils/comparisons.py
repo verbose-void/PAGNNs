@@ -62,7 +62,10 @@ def get_dataloaders(data_tensors, batch_size):
     return train_dl, test_dl
 
 
-def compare(model_dicts, train_dl, test_dl, epochs, criterion, use_tqdm=True, test_accuracy=False, device=torch.device('cpu'), flat_dim=None):
+def compare(model_dicts, train_dl, test_dl, epochs, criterion, use_tqdm=True, test_accuracy=False, device=torch.device('cpu'), flat_dim=None, pruner=None):
+    if pruner is None:
+        pruner = lambda: True
+
     try:
         for model_dict in model_dicts:
             model_dict['train_history'] = []
@@ -103,7 +106,9 @@ def compare(model_dicts, train_dl, test_dl, epochs, criterion, use_tqdm=True, te
                         total_loss += loss.item()
 
                         loss.backward()
-                        optimizer.step()
+
+                        if pruner():
+                            optimizer.step()
 
                     avg_loss = total_loss / len(train_dl)
                     print('[%s] training loss: %f' % (model_name, avg_loss))
