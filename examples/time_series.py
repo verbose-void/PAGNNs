@@ -86,7 +86,10 @@ if __name__ == '__main__':
     epochs = 300
 
     for i in range(epochs):
-        for seq, labels in train_inout_seq:
+        pagnn_avg_loss = 0
+        avg_loss = 0
+        
+        for batch_idx, (seq, labels) in enumerate(train_inout_seq):
             seq = seq.to(device)
             labels = labels.to(device)
 
@@ -100,17 +103,19 @@ if __name__ == '__main__':
             y_pred_pagnn = pagnn_model(seq)
     
             single_loss = loss_function(y_pred, labels)
+            avg_loss += single_loss.item()
             single_loss.backward()
             optimizer.step()
 
             pagnn_single_loss = loss_function(y_pred_pagnn, labels)
+            pagnn_avg_loss += pagnn_single_loss.item()
             pagnn_single_loss.backward()
             pagnn_optimizer.step()
     
         if i%25 == 1:
-            print(f'epoch: {i:3} LSTM loss: {single_loss.item():10.8f} PAGNN loss: {pagnn_single_loss.item():10.8f}')
+            print(f'epoch: {i:3} LSTM loss: {(avg_loss / (batch_idx)+1):10.8f} PAGNN loss: {(pagnn_avg_loss / (batch_idx)+1):10.8f}')
     
-    print(f'epoch: {i:3} LSTM loss: {single_loss.item():10.10f} PAGNN loss: {pagnn_single_loss.item():10.10f}')
+    print(f'epoch: {i:3} LSTM loss: {(avg_loss / (batch_idx)+1):10.10f} PAGNN loss: {(pagnn_avg_loss / (batch_idx)+1):10.10f}')
 
     fut_pred = 12
 
