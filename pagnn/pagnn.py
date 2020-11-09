@@ -34,8 +34,8 @@ class PAGNNLayer(torch.nn.Module):
 
         if activation is None:
             activation = lambda x: x
-        elif steps == 1:
-            raise Exception('If activation is provided, but steps = 1, the activation will not be used.')
+        # elif steps == 1:
+            # raise Exception('If activation is provided, but steps = 1, the activation will not be used UNLESS input is a sequence')
         
         self.weight = torch.nn.Parameter(torch.zeros((self._total_neurons, self._total_neurons)))
         self.bias = torch.nn.Parameter(torch.zeros(self._total_neurons))
@@ -68,8 +68,8 @@ class PAGNNLayer(torch.nn.Module):
             if self._input_neurons != 1:
                 raise NotImplemented('TODO')
 
-            for sample in x.unsqueeze(-1):
-                self.load_input_neurons(sample)
+            for idx, sample in enumerate(x.unsqueeze(-1)):
+                self.load_input_neurons(sample, force_retain_state=idx != 0)
                 self.step(n=self._steps)
 
         else:
@@ -78,16 +78,18 @@ class PAGNNLayer(torch.nn.Module):
 
         return self.extract_output_neurons_data()
 
-    def load_input_neurons(self, x):
+    def load_input_neurons(self, x, force_retain_state=None):
+        retain_state = self._retain_state if force_retain_state is None else force_retain_state
+
         if len(x.shape) == 1:
             assert x.shape[0] == self._input_neurons
-            if not self._retain_state:
+            if not retain_state:
                 self.reset_state(self._total_neurons)
             self.state[:self._input_neurons] = x
 
         elif len(x.shape) == 2:
             assert x.shape[1] == self._input_neurons
-            if not self._retain_state:
+            if retain_state:
                 self.reset_state((x.shape[0], self._total_neurons))
             self.state[:, :self._input_neurons] = x
 
