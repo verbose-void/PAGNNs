@@ -13,6 +13,9 @@ from sklearn.preprocessing import MinMaxScaler
 
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
+np.random.seed(666)
+torch.manual_seed(666)
+
 
 def test_pagnn_op():
     # simple case
@@ -251,7 +254,7 @@ def test_sequence_inputs():
     loss_function = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
-    pagnn_model = PAGNNLayer(1, 1, 50, steps=1, retain_state=False).to(device)
+    pagnn_model = PAGNNLayer(1, 1, 200, steps=1, retain_state=False).to(device)
     pagnn_optimizer = torch.optim.Adam(pagnn_model.parameters(), lr=0.001)
 
     epochs = 10
