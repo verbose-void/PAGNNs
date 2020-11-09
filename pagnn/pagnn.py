@@ -89,7 +89,7 @@ class PAGNNLayer(torch.nn.Module):
 
         elif len(x.shape) == 2:
             assert x.shape[1] == self._input_neurons
-            if retain_state:
+            if not retain_state:
                 self.reset_state((x.shape[0], self._total_neurons))
             self.state[:, :self._input_neurons] = x
 
