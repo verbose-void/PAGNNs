@@ -63,8 +63,19 @@ class PAGNNLayer(torch.nn.Module):
                 self.state = self.activation(self.state)
 
     def forward(self, x):
-        self.load_input_neurons(x)
-        self.step(n=self._steps)
+        if len(x.shape) == 1 and x.shape[0] != self._input_neurons:
+            # treat input data as a sequence
+            if self._input_neurons != 1:
+                raise NotImplemented('TODO')
+
+            for sample in x.unsqueeze(-1):
+                self.load_input_neurons(sample)
+                self.step(n=self._steps)
+
+        else:
+            self.load_input_neurons(x)
+            self.step(n=self._steps)
+
         return self.extract_output_neurons_data()
 
     def load_input_neurons(self, x):
