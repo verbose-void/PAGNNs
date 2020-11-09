@@ -2,6 +2,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 import numpy as np
+from copy import deepcopy
 import seaborn as sns
 from sklearn.preprocessing import MinMaxScaler
 import matplotlib.pyplot as plt
@@ -80,7 +81,7 @@ if __name__ == '__main__':
     loss_function = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
-    pagnn_model = PAGNNLayer(12, 1, 20, steps=5, activation=F.relu, retain_state=False).to(device)
+    pagnn_model = PAGNNLayer(1, 1, 50, steps=1, retain_state=False).to(device)
     pagnn_optimizer = torch.optim.Adam(pagnn_model.parameters(), lr=0.001)
 
     epochs = 300
@@ -98,7 +99,7 @@ if __name__ == '__main__':
     
             y_pred = model(seq)
             y_pred_pagnn = pagnn_model(seq)
-    
+
             single_loss = loss_function(y_pred, labels)
             single_loss.backward()
             optimizer.step()
@@ -108,9 +109,9 @@ if __name__ == '__main__':
             pagnn_optimizer.step()
     
         if i%25 == 1:
-            print(f'epoch: {i:3} LSTM loss: {single_loss.item():10.8f} PAGNN loss: {pagnn_single_loss.item():10.8f}')
+            print(f'epoch: {i:3} LSTM (single) loss: {single_loss.item():10.8f} PAGNN (single) loss: {pagnn_single_loss.item():10.8f}')
     
-    print(f'epoch: {i:3} LSTM loss: {single_loss.item():10.10f} PAGNN loss: {pagnn_single_loss.item():10.10f}')
+    print(f'epoch: {i:3} LSTM (single) loss: {single_loss.item():10.10f} PAGNN (single) loss: {pagnn_single_loss.item():10.10f}')
 
     fut_pred = 12
 
