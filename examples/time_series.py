@@ -53,7 +53,7 @@ if __name__ == '__main__':
     loss_function = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
-    pagnn_model = PAGNNLayer(1, 1, 50, steps=1, retain_state=False).to(device)
+    pagnn_model = PAGNNLayer(1, 1, 10, steps=1, retain_state=False).to(device)
     pagnn_optimizer = torch.optim.Adam(pagnn_model.parameters(), lr=0.001)
 
     epochs = 300
