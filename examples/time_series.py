@@ -8,36 +8,8 @@ from sklearn.preprocessing import MinMaxScaler
 import matplotlib.pyplot as plt
 
 from pagnn.pagnn import PAGNNLayer
-from pagnn.utils.comparisons import count_params
+from pagnn.utils.comparisons import count_params, LSTM, create_inout_sequences
 
-
-class LSTM(nn.Module):
-    def __init__(self, input_size=1, hidden_layer_size=100, output_size=1, device=torch.device('cpu')):
-        super().__init__()
-        self.hidden_layer_size = hidden_layer_size
-        self.device = device
-
-        self.lstm = nn.LSTM(input_size, hidden_layer_size).to(device)
-
-        self.linear = nn.Linear(hidden_layer_size, output_size).to(device)
-
-        self.hidden_cell = (torch.zeros(1,1,self.hidden_layer_size, device=device),
-                            torch.zeros(1,1,self.hidden_layer_size, device=device))
-
-    def forward(self, input_seq):
-        lstm_out, self.hidden_cell = self.lstm(input_seq.view(len(input_seq) ,1, -1), self.hidden_cell)
-        predictions = self.linear(lstm_out.view(len(input_seq), -1))
-        return predictions[-1]
-
-
-def create_inout_sequences(input_data, tw):
-    inout_seq = []
-    L = len(input_data)
-    for i in range(L-tw):
-        train_seq = input_data[i:i+tw]
-        train_label = input_data[i+tw:i+tw+1]
-        inout_seq.append((train_seq ,train_label))
-    return inout_seq
 
 
 if __name__ == '__main__':
@@ -87,6 +59,9 @@ if __name__ == '__main__':
     epochs = 300
 
     for i in range(epochs):
+        pagnn_avg_loss = 0
+        lstm_avg_loss = 0
+
         for seq, labels in train_inout_seq:
             seq = seq.to(device)
             labels = labels.to(device)
@@ -107,11 +82,18 @@ if __name__ == '__main__':
             pagnn_single_loss = loss_function(y_pred_pagnn, labels)
             pagnn_single_loss.backward()
             pagnn_optimizer.step()
+
+            pagnn_avg_loss += pagnn_single_loss.item()
+            lstm_avg_loss += single_loss.item()
+
+        pagnn_avg_loss /= len(train_inout_seq)
+        lstm_avg_loss /= len(train_inout_seq)
     
         if i%25 == 1:
-            print(f'epoch: {i:3} LSTM (single) loss: {single_loss.item():10.8f} PAGNN (single) loss: {pagnn_single_loss.item():10.8f}')
+            print(f'epoch: {i:3} LSTM avg loss: {lstm_avg_loss:10.8f} PAGNN avg loss: {pagnn_avg_loss:10.8f}')
+
     
-    print(f'epoch: {i:3} LSTM (single) loss: {single_loss.item():10.10f} PAGNN (single) loss: {pagnn_single_loss.item():10.10f}')
+    print(f'epoch: {i:3} LSTM avg loss: {lstm_avg_loss:10.10f} PAGNN avg loss: {pagnn_avg_loss:10.10f}')
 
     fut_pred = 12
 
