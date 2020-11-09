@@ -72,6 +72,11 @@ Extracting predictions from a PAGNN: If we want our output vector `Y` to be a fe
 
 ### Time Series Prediction:
 [Source Code](examples/time_series.py)
+
+Observe the "param" count in the visualization's legend. **The PAGNN here only has 156 parameters and outperforms the LSTM with 41,301 parameters by a very significant amount**. This is using the same LR & same # epochs. This PAGNN is fully dense.
+
+A quick note here, increasing PAGNNs neuron count count doesn't necessarily increase performance, in some cases it can reduce it. This is most likely due to the quadratic increase in noise as you increase the number of neurons. **I hypothesize that sparse training will reduce the amount of noise and boost performance by an extreme amount in comparison to fully dense PAGNNs if executed correctly**.
+
 ![](examples/figures/time_series.png)
 
 ### Iris Classification:

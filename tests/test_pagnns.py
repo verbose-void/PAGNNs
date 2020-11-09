@@ -1,13 +1,20 @@
 import torch
+from torch import nn
 import torch.nn.functional as F
 
 import numpy as np
 from pagnn.pagnn import PAGNNLayer, _pagnn_op
+from pagnn.utils.comparisons import count_params, LSTM, create_inout_sequences
 
 import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.preprocessing import MinMaxScaler
 
 
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+
+np.random.seed(666)
+torch.manual_seed(666)
 
 
 def test_pagnn_op():
@@ -221,3 +228,70 @@ def test_nonlinear_regression():
             plt.show()
 
         assert is_allclose
+
+
+def test_sequence_inputs():
+    # currently no batch size support
+    pagnn = PAGNNLayer(1, 1, 5, steps=1, retain_state=False) # using retain_state=False because when using sequence inputs it overrides this
+
+    flight_data = sns.load_dataset('flights')
+    
+    all_data = flight_data['passengers'].values.astype(float)
+    test_data_size = 12
+    train_data = all_data[:-test_data_size]
+    test_data = all_data[-test_data_size:]
+
+    scaler = MinMaxScaler(feature_range=(-1, 1))
+    train_data_normalized = scaler.fit_transform(train_data .reshape(-1, 1))
+
+    train_data_normalized = torch.FloatTensor(train_data_normalized).view(-1)
+
+    train_window = 12
+    train_inout_seq = create_inout_sequences(train_data_normalized, train_window)
+
+    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+    model = LSTM(device=device)
+    loss_function = nn.MSELoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+
+    pagnn_model = PAGNNLayer(1, 1, 200, steps=1, retain_state=False).to(device)
+    pagnn_optimizer = torch.optim.Adam(pagnn_model.parameters(), lr=0.001)
+
+    epochs = 10
+
+
+    for i in range(epochs):
+        pagnn_avg_loss = 0
+        lstm_avg_loss = 0
+
+        for seq, labels in train_inout_seq:
+            seq = seq.to(device)
+            labels = labels.to(device)
+
+            optimizer.zero_grad()
+            pagnn_optimizer.zero_grad()
+
+            model.hidden_cell = (torch.zeros(1, 1, model.hidden_layer_size, device=device),
+                                 torch.zeros(1, 1, model.hidden_layer_size, device=device))
+    
+            y_pred = model(seq)
+            y_pred_pagnn = pagnn_model(seq)
+
+            single_loss = loss_function(y_pred, labels)
+            single_loss.backward()
+            optimizer.step()
+
+            pagnn_single_loss = loss_function(y_pred_pagnn, labels)
+            pagnn_single_loss.backward()
+            pagnn_optimizer.step()
+
+            pagnn_avg_loss += pagnn_single_loss.item()
+            lstm_avg_loss += single_loss.item()
+
+        pagnn_avg_loss /= len(train_inout_seq)
+        lstm_avg_loss /= len(train_inout_seq)
+        print('epoch [%i] pagnn loss: %f lstm loss: %f' % (i, pagnn_avg_loss, lstm_avg_loss))
+
+    assert pagnn_avg_loss < lstm_avg_loss, 'PAGNN should outperform LSTMs significantly for this test case.'
+
+     

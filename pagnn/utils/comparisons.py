@@ -1,15 +1,43 @@
 import torch
+from torch import nn
 from torch.utils.data import TensorDataset, DataLoader
 
 import numpy as np
-
 import pandas as pd
-
 from tqdm import tqdm
 
 
 def count_params(model):
     return sum(dict((p.data_ptr(), p.numel()) for p in model.parameters()).values())
+
+
+def create_inout_sequences(input_data, tw):
+    inout_seq = []
+    L = len(input_data)
+    for i in range(L-tw):
+        train_seq = input_data[i:i+tw]
+        train_label = input_data[i+tw:i+tw+1]
+        inout_seq.append((train_seq ,train_label))
+    return inout_seq
+
+
+class LSTM(nn.Module):
+    def __init__(self, input_size=1, hidden_layer_size=100, output_size=1, device=torch.device('cpu')):
+        super().__init__()
+        self.hidden_layer_size = hidden_layer_size
+        self.device = device
+
+        self.lstm = nn.LSTM(input_size, hidden_layer_size).to(device)
+
+        self.linear = nn.Linear(hidden_layer_size, output_size).to(device)
+
+        self.hidden_cell = (torch.zeros(1,1,self.hidden_layer_size, device=device),
+                            torch.zeros(1,1,self.hidden_layer_size, device=device))
+
+    def forward(self, input_seq):
+        lstm_out, self.hidden_cell = self.lstm(input_seq.view(len(input_seq) ,1, -1), self.hidden_cell)
+        predictions = self.linear(lstm_out.view(len(input_seq), -1))
+        return predictions[-1]
 
 
 class FFNN(torch.nn.Module):
