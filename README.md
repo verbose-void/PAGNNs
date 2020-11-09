@@ -37,6 +37,11 @@
 
 ### Time Series Prediction:
 [Source Code](examples/time_series.py)
+
+Observe the #p (# of total parameters). For PAGNNs, we only use 156 and outperform the LSTM with 41,301 parameters by a very significant amount. This is using the same LR & same # epochs. This PAGNN is fully dense.
+
+A quick note here, increasing PAGNNs neuron count count doesn't necessarily increase performance, in some cases it can reduce it. This is most likely due to the quadratic increase in noise as you increase the number of neurons. I hypothesize that sparse training will reduce the amount of noise, thus making this problem even easier to solve.
+
 ![](examples/figures/time_series.png)
 
 ### Iris Classification:
