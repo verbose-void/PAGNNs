@@ -1,8 +1,9 @@
 # PAGNNs
+##### The unification of AI. Generalize to temporal/non-temporal datasets with 0 API modifications, and (soon to be) 0 architectural hyperparameters.
 
-**WARNING: PAGNNs are currently under VERY ACTIVE research. These results & comparisons are very early in it's lifecycle and there is plenty of ground to cover.**
+WARNING: PAGNNs are currently under VERY ACTIVE research. These results & comparisons are very early in it's lifecycle and there is plenty of ground to cover.
 
-**This is also the very first fully open source AI research project for my new research company that is powered by [SharpestMinds](https://www.sharpestminds.com/?r=dyllan-mccreary) mentees. If you are interested in being part of my research team, you may reach out to me via `mccreary@dyllan.ai` or you can apply to be my mentee [here](https://app.sharpestminds.com/u/yGyFBQvfv44iG2JC5?r=dyllan-mccreary). If you'd like to see an idea of the types of researchers I'm looking for, the [GitHub Projects](https://github.com/McCrearyD/PAGNNs/projects) or [Issues](https://github.com/McCrearyD/PAGNNs/issues) pages of this repository has a nice list of things to do!**
+This is also the very first fully open source AI research project for my new research company that is powered by [SharpestMinds](https://www.sharpestminds.com/?r=dyllan-mccreary) mentees. If you are interested in being part of my research team, you may reach out to me via `mccreary@dyllan.ai` or you can apply to be my mentee [here](https://app.sharpestminds.com/u/yGyFBQvfv44iG2JC5?r=dyllan-mccreary). If you'd like to see an idea of the types of researchers I'm looking for, the [GitHub Projects](https://github.com/McCrearyD/PAGNNs/projects) or [Issues](https://github.com/McCrearyD/PAGNNs/issues) pages of this repository has a nice list of things to do!
 
 # What are PAGNNs?
  
