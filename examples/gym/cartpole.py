@@ -47,12 +47,27 @@ def get_random_genomes(n):
     return [genome_generator() for _ in range(n)]
 
 
-def run(generations=1, population_size=100, best_replay=False):
+def get_next_population(current_genomes, scores, n, search_type):
+    if search_type == 'random':
+        genomes = get_random_genomes(n)
+
+    elif search_type == 'evolutionary':
+        pass
+
+    else:
+        raise Exception()
+
+    return genomes
+
+
+def run(generations=1, population_size=100, best_replay=False, search_type='random'):
+    # first generation is always random
+    genomes = get_random_genomes(population_size) 
+
     best_genome = {'score': float('-inf')}
 
     for generation in range(generations):
         avg_scores_per_genome  = []
-        genomes = get_random_genomes(population_size)
 
         # let genomes play
         for i, genome in enumerate(genomes):
@@ -64,6 +79,9 @@ def run(generations=1, population_size=100, best_replay=False):
                 best_genome = {'score': avg_score, 'state_dict': deepcopy(genome.state_dict())}
 
         print('generation %i best score:' % generation, best_genome['score'])
+
+        # get next generation
+        genomes = get_next_population(genomes, avg_scores_per_genome, population_size, search_type)
     
     # replay
     if best_replay:
