@@ -1,6 +1,7 @@
 import gym
 import numpy as np
 import torch
+import random
 import torch.nn.functional as F
 from pagnn.pagnn import PAGNNLayer
 from copy import deepcopy
@@ -11,6 +12,7 @@ device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cp
 
 def play_episodes(env, network, episodes=5, max_steps=200, render=False, verbose=False):
     env.reset()
+    env.seed(np.random.randint(999999999)) # seed according to numpy so we can reproduce results every time
     scores = []
 
     for i_episode in range(episodes):
@@ -141,6 +143,14 @@ def get_space_len(space):
     if hasattr(space, 'shape'):
         return np.prod(space.shape)
     raise Exception()
+
+
+def deterministic():
+    np.random.seed(666)
+    torch.manual_seed(666)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    random.seed(666)
 
 
 def run(env_string, generations=10, population_size=100, best_replay=False, search_type='random', extra_neurons=5, retain_state=False):
