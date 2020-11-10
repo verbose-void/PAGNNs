@@ -1,4 +1,5 @@
 import gym
+import torch
 from pagnn.pagnn import PAGNNLayer
 
 def play_episode(network, episodes=20, max_steps=100, render=False, verbose=False):
@@ -11,7 +12,11 @@ def play_episode(network, episodes=20, max_steps=100, render=False, verbose=Fals
         for t in range(max_steps):
             if render:
                 env.render()
-            action = env.action_space.sample()
+
+            x = torch.tensor(observation)
+            y = network(x)
+            action = torch.argmax(y).item()
+            
             observation, reward, done, info = env.step(action)
             score += reward
             if done:
@@ -29,6 +34,6 @@ def play_episode(network, episodes=20, max_steps=100, render=False, verbose=Fals
 
 
 if __name__ == '__main__':
-    pagnn = PAGNNLayer(4, 1, 5)
+    pagnn = PAGNNLayer(4, 2, 4)
     scores_per_episode = play_episode(pagnn)
     print(scores_per_episode)
