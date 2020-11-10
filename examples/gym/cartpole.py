@@ -63,9 +63,7 @@ def run(generations=1, population_size=100, best_replay=False):
             if avg_score > best_genome['score']:
                 best_genome = {'score': avg_score, 'state_dict': deepcopy(genome.state_dict())}
 
-        print('avg scores per genome:', avg_scores_per_genome)
-
-    print('best score:', best_genome['score'])
+        print('generation %i best score:' % generation, best_genome['score'])
     
     # replay
     if best_replay:
