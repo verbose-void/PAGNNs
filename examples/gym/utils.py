@@ -15,7 +15,9 @@ def play_episodes(env, network, episodes=5, max_steps=200, render=False, verbose
 
     for i_episode in range(episodes):
         observation = env.reset()
+        network.reset_state(network._total_neurons)
         score = 0
+
         for t in range(max_steps):
             if render:
                 env.render()
@@ -40,12 +42,12 @@ def play_episodes(env, network, episodes=5, max_steps=200, render=False, verbose
     return scores
 
 
-def genome_generator(input_size, output_size):
-    return PAGNNLayer(input_size, output_size, 4).to(device)
+def genome_generator(input_size, output_size, extra_neurons, retain_state):
+    return PAGNNLayer(input_size, output_size, extra_neurons, retain_state=retain_state).to(device)
 
 
-def get_random_genomes(n, input_size, output_size):
-    return [genome_generator(input_size, output_size) for _ in range(n)]
+def get_random_genomes(n, input_size, output_size, extra_neurons, retain_state):
+    return [genome_generator(input_size, output_size, extra_neurons, retain_state) for _ in range(n)]
 
 
 @torch.no_grad()
@@ -86,16 +88,16 @@ def crossover(genome1, genome2):
     cb += b1 * b_mask
     cb += b2 * (b_mask == 0)
 
-    child = genome_generator(input_size=genome1._input_neurons, output_size=genome1._output_neurons)
+    child = genome_generator(input_size=genome1._input_neurons, output_size=genome1._output_neurons, extra_neurons=genome1._extra_neurons, retain_state=genome1._retain_state)
     child.weight.data = cw
     child.bias.data = cb
 
     return mutate(child)
 
 
-def get_next_population(current_genomes, scores, n, search_type, input_size, output_size):
+def get_next_population(current_genomes, scores, n, search_type, input_size, output_size, extra_neurons, retain_state):
     if search_type == 'random':
-        genomes = get_random_genomes(n, input_size=input_size, output_size=output_size)
+        genomes = get_random_genomes(n, input_size=input_size, output_size=output_size, extra_neurons=extra_neurons, retain_state=retain_state)
 
     elif search_type == 'evolutionary':
         # normalize scores
@@ -135,13 +137,13 @@ def get_space_len(space):
     raise Exception()
 
 
-def run(env_string, generations=10, population_size=100, best_replay=False, search_type='random'):
+def run(env_string, generations=10, population_size=100, best_replay=False, search_type='random', extra_neurons=5, retain_state=False):
     env = gym.make(env_string)
     ins = get_space_len(env.observation_space)
     outs = get_space_len(env.action_space)
 
     # first generation is always random
-    genomes = get_random_genomes(population_size, input_size=ins, output_size=outs) 
+    genomes = get_random_genomes(population_size, input_size=ins, output_size=outs, extra_neurons=extra_neurons, retain_state=retain_state) 
 
     best_genome = {'score': float('-inf')}
 
@@ -160,14 +162,10 @@ def run(env_string, generations=10, population_size=100, best_replay=False, sear
         print('generation %i best score:' % generation, best_genome['score'])
 
         # get next generation
-        genomes = get_next_population(genomes, torch.tensor(avg_scores_per_genome), population_size, search_type, input_size=ins, output_size=outs)
+        genomes = get_next_population(genomes, torch.tensor(avg_scores_per_genome), population_size, search_type, input_size=ins, output_size=outs, extra_neurons=extra_neurons, retain_state=retain_state)
     
     # replay
     if best_replay:
-        genome = genome_generator(input_size=ins, output_size=outs)
+        genome = genome_generator(input_size=ins, output_size=outs, extra_neurons=extra_neurons, retain_state=retain_state)
         genome.load_state_dict(best_genome['state_dict'])
         play_episodes(env, genome, verbose=True, render=True, episodes=1, max_steps=5000)
-
-
-if __name__ == '__main__':
-    run('CartPole-v0', best_replay=True, search_type='evolutionary')
