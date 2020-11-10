@@ -6,10 +6,12 @@ from pagnn.pagnn import PAGNNLayer
 from copy import deepcopy
 
 
+np.random.seed(666)
+torch.manual_seed(666)
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
 
-def play_episodes(network, episodes=20, max_steps=5000, render=False, verbose=False):
+def play_episodes(network, episodes=5, max_steps=200, render=False, verbose=False):
     env = gym.make('CartPole-v0')
     scores = []
 
@@ -48,10 +50,20 @@ def get_random_genomes(n):
     return [genome_generator() for _ in range(n)]
 
 
-def mutate(genome):
+@torch.no_grad()
+def mutate(genome, w_prob=1e-4, p_prob=1e-2, max_magnitude=0.5):
+    w = genome.weight
+    b = genome.bias
+
+    w_mutate_mask = torch.rand(w.shape, device=device) < w_prob
+    b_mutate_mask = torch.rand(b.shape, device=device) < p_prob
+    w += w_mutate_mask * ((torch.rand(w.shape, device=device) - 0.5) * (max_magnitude * 2))
+    b += b_mutate_mask * ((torch.rand(b.shape, device=device) - 0.5) * (max_magnitude * 2))
+
     return genome
 
 
+@torch.no_grad()
 def crossover(genome1, genome2):
     w1 = genome1.weight
     b1 = genome1.bias
@@ -117,7 +129,7 @@ def get_next_population(current_genomes, scores, n, search_type):
     return genomes
 
 
-def run(generations=10, population_size=100, best_replay=False, search_type='random'):
+def run(generations=5, population_size=100, best_replay=False, search_type='random'):
     # first generation is always random
     genomes = get_random_genomes(population_size) 
 
