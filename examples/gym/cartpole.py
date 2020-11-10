@@ -2,8 +2,13 @@ import gym
 import numpy as np
 import torch
 from pagnn.pagnn import PAGNNLayer
+from copy import deepcopy
 
-def play_episode(network, episodes=20, max_steps=100, render=False, verbose=False):
+
+device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+
+
+def play_episodes(network, episodes=20, max_steps=5000, render=False, verbose=False):
     env = gym.make('CartPole-v0')
     scores = []
 
@@ -14,7 +19,7 @@ def play_episode(network, episodes=20, max_steps=100, render=False, verbose=Fals
             if render:
                 env.render()
 
-            x = torch.tensor(observation)
+            x = torch.tensor(observation, device=device)
             y = network(x)
             action = torch.argmax(y).item()
             
@@ -34,18 +39,36 @@ def play_episode(network, episodes=20, max_steps=100, render=False, verbose=Fals
     return scores
 
 
-def run(generations=10, population_size=10):
-    genomes = [PAGNNLayer(4, 2, 4) for _ in range(population_size)]
-    best_genome = None
+def get_random_genomes(n):
+    return [PAGNNLayer(4, 2, 4).to(device) for _ in range(n)]
+
+
+def run(generations=1, population_size=100, best_replay=False):
+    best_genome = {'score': float('-inf')}
 
     for generation in range(generations):
         avg_scores_per_genome  = []
-        for i, genome in enumerate(genomes):
-            scores_per_episode = play_episode(genome)
-            avg_scores_per_genome.append(np.mean(scores_per_episode).item())
+        genomes = get_random_genomes(population_size)
 
-        print(avg_scores_per_genome)
+        # let genomes play
+        for i, genome in enumerate(genomes):
+            scores_per_episode = play_episodes(genome)
+            avg_score = np.mean(scores_per_episode).item()
+            avg_scores_per_genome.append(avg_score)
+
+            if avg_score > best_genome['score']:
+                best_genome = {'score': avg_score, 'state_dict': deepcopy(genome.state_dict())}
+
+        print('avg scores per genome:', avg_scores_per_genome)
+
+    print('best score:', best_genome['score'])
     
+    # replay
+    if best_replay:
+        genome = PAGNNLayer(4, 2, 4).to(device)
+        genome.load_state_dict(best_genome['state_dict'])
+        play_episodes(genome, verbose=True, render=True, episodes=1, max_steps=5000)
+
 
 if __name__ == '__main__':
-    run()
+    run(best_replay=True)
