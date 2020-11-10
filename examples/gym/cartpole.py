@@ -39,8 +39,12 @@ def play_episodes(network, episodes=20, max_steps=5000, render=False, verbose=Fa
     return scores
 
 
+def genome_generator():
+    return PAGNNLayer(4, 2, 4).to(device)
+
+
 def get_random_genomes(n):
-    return [PAGNNLayer(4, 2, 4).to(device) for _ in range(n)]
+    return [genome_generator() for _ in range(n)]
 
 
 def run(generations=1, population_size=100, best_replay=False):
@@ -65,7 +69,7 @@ def run(generations=1, population_size=100, best_replay=False):
     
     # replay
     if best_replay:
-        genome = PAGNNLayer(4, 2, 4).to(device)
+        genome = genome_generator()
         genome.load_state_dict(best_genome['state_dict'])
         play_episodes(genome, verbose=True, render=True, episodes=1, max_steps=5000)
 
