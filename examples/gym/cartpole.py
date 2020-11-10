@@ -1,6 +1,7 @@
 import gym
 import numpy as np
 import torch
+import torch.nn.functional as F
 from pagnn.pagnn import PAGNNLayer
 from copy import deepcopy
 
@@ -47,12 +48,38 @@ def get_random_genomes(n):
     return [genome_generator() for _ in range(n)]
 
 
+def crossover(genome1, genome2):
+    # TODO
+    return genome1
+
+
 def get_next_population(current_genomes, scores, n, search_type):
     if search_type == 'random':
         genomes = get_random_genomes(n)
 
     elif search_type == 'evolutionary':
-        pass
+        # normalize scores
+        scores = scores / torch.linalg.norm(scores)
+
+        # turn scores into probability distribution
+        scores = F.softmax(scores, dim=0).numpy()
+
+        # select parents
+        indices = np.arange(n)
+        parent_pairs = np.random.choice(indices, (n-1, 2), p=scores)
+
+        # keep best
+        best_idx = np.argmax(scores)
+        genomes = [current_genomes[best_idx]]
+
+        # do crossovers
+        for i, (idx1, idx2) in enumerate(parent_pairs):
+            parent1 = current_genomes[idx1]
+            parent2 = current_genomes[idx2]
+            child = crossover(parent1, parent2)
+            genomes.append(child)
+    
+        assert len(genomes) == len(current_genomes)
 
     else:
         raise Exception()
@@ -81,7 +108,7 @@ def run(generations=1, population_size=100, best_replay=False, search_type='rand
         print('generation %i best score:' % generation, best_genome['score'])
 
         # get next generation
-        genomes = get_next_population(genomes, avg_scores_per_genome, population_size, search_type)
+        genomes = get_next_population(genomes, torch.tensor(avg_scores_per_genome), population_size, search_type)
     
     # replay
     if best_replay:
@@ -91,4 +118,4 @@ def run(generations=1, population_size=100, best_replay=False, search_type='rand
 
 
 if __name__ == '__main__':
-    run(best_replay=True)
+    run(best_replay=True, search_type='evolutionary')
