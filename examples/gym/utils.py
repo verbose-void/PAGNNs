@@ -135,7 +135,7 @@ def get_space_len(space):
     raise Exception()
 
 
-def run(env_string, generations=5, population_size=500, best_replay=False, search_type='random'):
+def run(env_string, generations=10, population_size=100, best_replay=False, search_type='random'):
     env = gym.make(env_string)
     ins = get_space_len(env.observation_space)
     outs = get_space_len(env.action_space)
