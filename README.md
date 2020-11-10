@@ -1,5 +1,5 @@
 # PAGNNs
-##### The unification of AI. Generalize to temporal/non-temporal datasets with 0 API modifications, and (soon to be) 0 architectural hyperparameters.
+##### The unification of AI. Generalize to temporal/non-temporal datasets with 0 API modifications & (soon to be) 0 architectural hyperparameters.
 
 WARNING: PAGNNs are currently under VERY ACTIVE research. These results & comparisons are very early in it's lifecycle and there is plenty of ground to cover.
 
