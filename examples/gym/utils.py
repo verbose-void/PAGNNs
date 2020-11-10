@@ -106,9 +106,11 @@ def get_next_population(current_genomes, scores, n, search_type, input_size, out
         # turn scores into probability distribution
         scores = F.softmax(scores, dim=0).numpy()
 
+        n_random = int(0.1 * n)
+
         # select parents
         indices = np.arange(n)
-        parent_pairs = np.random.choice(indices, (n-1, 2), p=scores)
+        parent_pairs = np.random.choice(indices, (n-1-n_random, 2), p=scores)
 
         # keep best
         best_idx = np.argmax(scores)
@@ -120,6 +122,10 @@ def get_next_population(current_genomes, scores, n, search_type, input_size, out
             parent2 = current_genomes[idx2]
             child = crossover(parent1, parent2)
             genomes.append(child)
+
+        # randomly initialize 10% of the new population
+        for _ in range(n_random):
+            genomes.append(genome_generator(input_size, output_size, extra_neurons, retain_state))
     
         assert len(genomes) == len(current_genomes)
 
