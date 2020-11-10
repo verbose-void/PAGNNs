@@ -10,7 +10,7 @@ device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cp
 
 
 def play_episodes(env, network, episodes=5, max_steps=200, render=False, verbose=False):
-    env = gym.make(env)
+    env.reset()
     scores = []
 
     for i_episode in range(episodes):
@@ -40,12 +40,12 @@ def play_episodes(env, network, episodes=5, max_steps=200, render=False, verbose
     return scores
 
 
-def genome_generator():
-    return PAGNNLayer(4, 2, 4).to(device)
+def genome_generator(input_size, output_size):
+    return PAGNNLayer(input_size, output_size, 4).to(device)
 
 
-def get_random_genomes(n):
-    return [genome_generator() for _ in range(n)]
+def get_random_genomes(n, input_size, output_size):
+    return [genome_generator(input_size, output_size) for _ in range(n)]
 
 
 @torch.no_grad()
@@ -86,16 +86,16 @@ def crossover(genome1, genome2):
     cb += b1 * b_mask
     cb += b2 * (b_mask == 0)
 
-    child = genome_generator()
+    child = genome_generator(input_size=genome1._input_neurons, output_size=genome1._output_neurons)
     child.weight.data = cw
     child.bias.data = cb
 
     return mutate(child)
 
 
-def get_next_population(current_genomes, scores, n, search_type):
+def get_next_population(current_genomes, scores, n, search_type, input_size, output_size):
     if search_type == 'random':
-        genomes = get_random_genomes(n)
+        genomes = get_random_genomes(n, input_size=input_size, output_size=output_size)
 
     elif search_type == 'evolutionary':
         # normalize scores
@@ -127,9 +127,21 @@ def get_next_population(current_genomes, scores, n, search_type):
     return genomes
 
 
-def run(env, generations=5, population_size=500, best_replay=False, search_type='random'):
+def get_space_len(space):
+    if hasattr(space, 'n'):
+        return space.n
+    if hasattr(space, 'shape'):
+        return np.prod(space.shape)
+    raise Exception()
+
+
+def run(env_string, generations=5, population_size=500, best_replay=False, search_type='random'):
+    env = gym.make(env_string)
+    ins = get_space_len(env.observation_space)
+    outs = get_space_len(env.action_space)
+
     # first generation is always random
-    genomes = get_random_genomes(population_size) 
+    genomes = get_random_genomes(population_size, input_size=ins, output_size=outs) 
 
     best_genome = {'score': float('-inf')}
 
@@ -148,21 +160,13 @@ def run(env, generations=5, population_size=500, best_replay=False, search_type=
         print('generation %i best score:' % generation, best_genome['score'])
 
         # get next generation
-        genomes = get_next_population(genomes, torch.tensor(avg_scores_per_genome), population_size, search_type)
+        genomes = get_next_population(genomes, torch.tensor(avg_scores_per_genome), population_size, search_type, input_size=ins, output_size=outs)
     
     # replay
     if best_replay:
-        genome = genome_generator()
+        genome = genome_generator(input_size=ins, output_size=outs)
         genome.load_state_dict(best_genome['state_dict'])
         play_episodes(env, genome, verbose=True, render=True, episodes=1, max_steps=5000)
-
-
-def set_seed_reproducability():
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
-    np.random.seed(666)
-    torch.manual_seed(666)
-    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
 
 if __name__ == '__main__':
