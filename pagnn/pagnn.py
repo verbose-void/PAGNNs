@@ -28,6 +28,7 @@ class PAGNNLayer(torch.nn.Module):
         self._total_neurons = input_neurons + output_neurons + extra_neurons
         self._input_neurons = input_neurons
         self._output_neurons = output_neurons
+        self._extra_neurons = extra_neurons
         self._sparsity = sparsity
         self._retain_state = retain_state
         self._steps = steps
