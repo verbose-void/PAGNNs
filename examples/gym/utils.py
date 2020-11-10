@@ -158,7 +158,8 @@ def run(env, generations=5, population_size=500, best_replay=False, search_type=
 
 
 def set_seed_reproducability():
-    torch.backends.cudnn.benchmark = True
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
     np.random.seed(666)
     torch.manual_seed(666)
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
