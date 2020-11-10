@@ -48,9 +48,39 @@ def get_random_genomes(n):
     return [genome_generator() for _ in range(n)]
 
 
+def mutate(genome):
+    return genome
+
+
 def crossover(genome1, genome2):
-    # TODO
-    return genome1
+    w1 = genome1.weight
+    b1 = genome1.bias
+    w2 = genome2.weight
+    b2 = genome2.bias
+
+    w1_flat = w1.view(-1)
+    w_numel = w1.numel()
+    b_numel = b1.numel()
+
+    # get masks
+    w_share = int(np.random.uniform(0, 1) * w_numel)
+    b_share = int(np.random.uniform(0, 1) * b_numel)
+    w_mask = torch.where(torch.arange(w_numel) < w_share, torch.ones(w_numel), torch.zeros(w_numel)).view(w1.shape).to(device)
+    b_mask = torch.where(torch.arange(b_numel) < b_share, torch.ones(b_numel), torch.zeros(b_numel)).view(b1.shape).to(device)
+    
+    # get weights/biases from parents according to masks
+    cw = torch.zeros_like(w1)
+    cw += w1 * w_mask
+    cw += w2 * (w_mask == 0)
+    cb = torch.zeros_like(b1)
+    cb += b1 * b_mask
+    cb += b2 * (b_mask == 0)
+
+    child = genome_generator()
+    child.weight.data = cw
+    child.bias.data = cb
+
+    return mutate(child)
 
 
 def get_next_population(current_genomes, scores, n, search_type):
@@ -87,7 +117,7 @@ def get_next_population(current_genomes, scores, n, search_type):
     return genomes
 
 
-def run(generations=1, population_size=100, best_replay=False, search_type='random'):
+def run(generations=10, population_size=100, best_replay=False, search_type='random'):
     # first generation is always random
     genomes = get_random_genomes(population_size) 
 
