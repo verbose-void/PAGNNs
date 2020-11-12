@@ -75,6 +75,7 @@ if args.resume:
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.SGD(net.parameters(), lr=args.lr,
                       momentum=0.9, weight_decay=5e-4)
+lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 125)
 
 
 # Training
@@ -140,3 +141,4 @@ def test(epoch):
 for epoch in range(start_epoch, start_epoch+200):
     train(epoch)
     test(epoch)
+    lr_scheduler.step()
