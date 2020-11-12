@@ -15,9 +15,7 @@ def _pagnn_op(state, weight, bias=None):
 
 
 class PAGNNLayer(torch.nn.Module):
-    def __init__(self, input_neurons, output_neurons, extra_neurons, steps=1, sparsity=0, retain_state=True, activation=None, device=torch.device('cpu')):
-        self.device = device
-
+    def __init__(self, input_neurons, output_neurons, extra_neurons, steps=1, sparsity=0, retain_state=True, activation=None):
         super(PAGNNLayer, self).__init__()
 
         assert input_neurons > 0 and output_neurons > 0 and extra_neurons >= 0 and sparsity >= 0 and steps >= 1
@@ -28,6 +26,7 @@ class PAGNNLayer(torch.nn.Module):
         self._total_neurons = input_neurons + output_neurons + extra_neurons
         self._input_neurons = input_neurons
         self._output_neurons = output_neurons
+        self._extra_neurons = extra_neurons
         self._sparsity = sparsity
         self._retain_state = retain_state
         self._steps = steps
@@ -47,14 +46,13 @@ class PAGNNLayer(torch.nn.Module):
             self.reset_state(self._total_neurons)
 
     def to(self, device, *args, **kwargs):
-        self.device = device
         super().to(device, *args, **kwargs)
         if self.state is not None:
             self.state = self.state.to(device)
         return self
 
     def reset_state(self, state_shape):
-        self.state = torch.zeros(state_shape, device=self.device)
+        self.state = torch.zeros(state_shape, device=self.weight.device)
 
     def step(self, n=1):
         for step in range(n):
@@ -101,3 +99,6 @@ class PAGNNLayer(torch.nn.Module):
             return self.state[-self._output_neurons:]
         return self.state[:, -self._output_neurons:]
 
+
+    def extra_repr(self):
+        return 'input_neurons=%i, output_neurons=%i, extra_neurons=%i' % (self._input_neurons, self._output_neurons, self._extra_neurons)
