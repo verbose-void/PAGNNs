@@ -2,6 +2,7 @@ import torch
 import numpy as np
 
 from torch.nn import Sequential, Linear, ReLU
+import torch.nn.functional as F
 
 from pagnn.utils.importer import import_ffnn, count_neurons
 
@@ -31,6 +32,9 @@ def test_import_ffnn():
     X = torch.rand((50, 1))
     T = torch.rand((50, 1))
 
+    print('input data:')
+    print(X)
+
     net1 = Sequential(
         Linear(1, 5),
         ReLU(),
@@ -47,7 +51,7 @@ def test_import_ffnn():
     print('FFNN output:')
     print(Y)
 
-    net1_pagnn = import_ffnn(net1)
+    net1_pagnn = import_ffnn(net1, F.relu)
 
     print('imported PAGNN:')
     print(net1_pagnn)
@@ -56,5 +60,7 @@ def test_import_ffnn():
 
     print('imported PAGNN output:')
     print(imported_Y)
+
+    print('FFNN out shape:', Y.shape, 'PAGNN out shape:', imported_Y.shape)
     
     assert False
