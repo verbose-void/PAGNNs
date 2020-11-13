@@ -62,5 +62,7 @@ def test_import_ffnn():
     print(imported_Y)
 
     print('FFNN out shape:', Y.shape, 'PAGNN out shape:', imported_Y.shape)
+
+    error = F.mse_loss(Y, imported_Y)
     
-    assert False
+    assert torch.all(torch.eq(Y, imported_Y)), 'All elements of Y must equal imported_Y. MSError: %f' % error
