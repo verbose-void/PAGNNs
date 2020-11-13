@@ -3,13 +3,26 @@ import numpy as np
 
 from torch.nn import Sequential, Linear, ReLU
 
-from pagnn.utils.importer import import_ffnn
+from pagnn.utils.importer import import_ffnn, count_neurons
 
 
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
 np.random.seed(666)
 torch.manual_seed(666)
+
+
+def test_count_neurons():
+    net = Sequential(
+        Linear(17, 3),
+        ReLU(),
+        Linear(3, 19),
+        ReLU(),
+        Linear(19, 1)
+    )
+
+    neurons = count_neurons(net)
+    assert neurons == 40
 
 
 def test_import_ffnn():
