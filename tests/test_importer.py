@@ -28,47 +28,55 @@ def test_count_neurons():
     assert last == 1
 
 
-def test_import_ffnn():
-    X = torch.rand((50, 1))
-    T = torch.rand((50, 1))
-
+def assert_import_equivalence(net, X):
     print('input data:')
     print(X)
 
-    """
-    net1 = Sequential(
+    print('Input net:')
+    print(net)
+
+    Y = net(X)
+
+    print('output:')
+    print(Y)
+
+    pagnn = import_ffnn(net, F.relu)
+
+    print('imported PAGNN:')
+    print(pagnn)
+
+    imported_Y = pagnn(X)
+
+    print('PAGNN output:')
+    print(imported_Y)
+
+    print('original out shape:', Y.shape, 'PAGNN out shape:', imported_Y.shape)
+
+    error = F.mse_loss(Y, imported_Y)
+    
+    assert error < 1e-3, 'All elements of Y must equal imported_Y. MSError: %f' % error
+
+
+def test_import_linear_regression():
+    X = torch.rand((50, 1))
+
+    net = Sequential(
+        Linear(1, 1),
+    )
+
+    assert_import_equivalence(net, X)
+
+"""
+def test_import_3layer():
+    X = torch.rand((50, 1))
+
+    net = Sequential(
         Linear(1, 5),
         ReLU(),
         Linear(5, 5,),
         ReLU(),
         Linear(5, 1)
     )
-    """
-    net1 = Sequential(
-        Linear(1, 1),
-        ReLU(),
-    )
 
-    print('FFNN:')
-    print(net1)
-
-    Y = net1(X)
-
-    print('FFNN output:')
-    print(Y)
-
-    net1_pagnn = import_ffnn(net1, F.relu)
-
-    print('imported PAGNN:')
-    print(net1_pagnn)
-
-    imported_Y = net1_pagnn(X)
-
-    print('imported PAGNN output:')
-    print(imported_Y)
-
-    print('FFNN out shape:', Y.shape, 'PAGNN out shape:', imported_Y.shape)
-
-    error = F.mse_loss(Y, imported_Y)
-    
-    assert error < 1e-3, 'All elements of Y must equal imported_Y. MSError: %f' % error
+    assert_import_equivalence(net, X)
+"""

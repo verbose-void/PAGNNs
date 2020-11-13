@@ -41,9 +41,15 @@ def import_ffnn(ffnn, activation):
     # import synaptic weightings
     pagnn.zero_params()
     for i, layer in enumerate(get_linear_layers(ffnn)):
+        in_neurons = layer.in_features
+        out_neurons = layer.out_features
+        
+        pagnn.weight.data[:in_neurons, -out_neurons:] = layer.weight.data
+        pagnn.bias.data[-out_neurons:] = layer.bias.data
+
         print(pagnn.weight.shape, layer.weight.shape)
-        pagnn.weight.data[0, 1] = layer.weight.data
+        # pagnn.weight.data[0, 1] = layer.weight.data
         print(pagnn.bias.shape, layer.bias.shape)
-        pagnn.bias.data[1] = layer.bias.data
+        # pagnn.bias.data[1] = layer.bias.data
 
     return pagnn
