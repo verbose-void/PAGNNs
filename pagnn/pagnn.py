@@ -62,21 +62,31 @@ class PAGNNLayer(torch.nn.Module):
             if step < n-1:
                 self.state = self.activation(self.state)
 
-    def forward(self, x):
-        self.load_input_neurons(x)
-        self.step(n=self._steps)
+    def forward(self, x, is_sequence=False):
+        if is_sequence:
+            self.reset_state(self._total_neurons)
+            for seq_sample in x:
+                self.load_input_neurons(seq_sample.unsqueeze(-1), retain_state=True)
+            self.step(n=self._steps)
+        else:
+            self.load_input_neurons(x)
+            self.step(n=self._steps)
+
         return self.extract_output_neurons_data()
 
-    def load_input_neurons(self, x):
+    def load_input_neurons(self, x, retain_state=None):
+        if retain_state is None:
+            retain_state = self._retain_state
+
         if len(x.shape) == 1:
             assert x.shape[0] == self._input_neurons
-            if not self._retain_state:
+            if not retain_state:
                 self.reset_state(self._total_neurons)
             self.state[:self._input_neurons] = x
 
         elif len(x.shape) == 2:
             assert x.shape[1] == self._input_neurons
-            if not self._retain_state:
+            if not retain_state:
                 self.reset_state((x.shape[0], self._total_neurons))
             self.state[:, :self._input_neurons] = x
 

@@ -80,10 +80,10 @@ if __name__ == '__main__':
     loss_function = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
-    pagnn_model = PAGNNLayer(12, 1, 20, steps=5, activation=F.relu, retain_state=False).to(device)
+    pagnn_model = PAGNNLayer(1, 1, 20, steps=3, activation=F.relu, retain_state=False).to(device)
     pagnn_optimizer = torch.optim.Adam(pagnn_model.parameters(), lr=0.001)
 
-    epochs = 300
+    epochs = 1000
 
     for i in range(epochs):
         pagnn_avg_loss = 0
@@ -100,7 +100,7 @@ if __name__ == '__main__':
                             torch.zeros(1, 1, model.hidden_layer_size, device=device))
     
             y_pred = model(seq)
-            y_pred_pagnn = pagnn_model(seq)
+            y_pred_pagnn = pagnn_model(seq, is_sequence=True)
     
             single_loss = loss_function(y_pred, labels)
             avg_loss += single_loss.item()
@@ -129,7 +129,7 @@ if __name__ == '__main__':
             model.hidden = (torch.zeros(1, 1, model.hidden_layer_size, device=device),
                             torch.zeros(1, 1, model.hidden_layer_size, device=device))
             test_inputs.append(model(seq).item())
-            pagnn_test_inputs.append(pagnn_model(seq).item())
+            pagnn_test_inputs.append(pagnn_model(seq, is_sequence=True).item())
 
     actual_predictions = scaler.inverse_transform(np.array(test_inputs[train_window:] ).reshape(-1, 1))
     pagnn_actual_predictions = scaler.inverse_transform(np.array(pagnn_test_inputs[train_window:] ).reshape(-1, 1))
