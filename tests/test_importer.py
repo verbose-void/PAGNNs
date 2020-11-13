@@ -21,8 +21,10 @@ def test_count_neurons():
         Linear(19, 1)
     )
 
-    neurons = count_neurons(net)
-    assert neurons == 40
+    first, extra, last = count_neurons(net)
+    assert first == 17
+    assert extra == 22
+    assert last == 1
 
 
 def test_import_ffnn():
