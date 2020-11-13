@@ -1,3 +1,5 @@
+"""Reference script: https://github.com/kuangliu/pytorch-cifar/blob/62321904f06202040c919e0fc50b58e34ab26539/main.py"""
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
