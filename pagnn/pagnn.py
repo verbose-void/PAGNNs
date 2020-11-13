@@ -45,6 +45,13 @@ class PAGNNLayer(torch.nn.Module):
         if retain_state:
             self.reset_state(self._total_neurons)
 
+    @torch.no_grad()
+    def zero_params(self):
+        self.weight.data = torch.zeros_like(self.weight.data)
+        self.bias.data = torch.zeros_like(self.bias.data)
+        if self.state is not None:
+            self.state.data = torch.zeros_like(self.state.data)
+
     def to(self, device, *args, **kwargs):
         super().to(device, *args, **kwargs)
         if self.state is not None:
