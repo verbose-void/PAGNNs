@@ -15,7 +15,7 @@ This is also the very first fully open source AI research project for my new res
 - <code>s<sub>t</sub></code> is a row vector of shape `1xN`.
 - And `N` is the total number of neurons in the network.
 
-**A quick note:** the `σ(...)` function is NOT required to be a nonlinearity. **PAGNNs are special in that they do NOT require an activation function to generalize to nonlinear datasets**. In the case we use no nonlinearity, `σ(...)` becomes an identity function.  More on this [below](#PAGNNs-do-NOT-require-an-activation-function).
+<s>**A quick note:** the `σ(...)` function is NOT required to be a nonlinearity. **PAGNNs are special in that they do NOT require an activation function to generalize to nonlinear datasets**. In the case we use no nonlinearity, `σ(...)` becomes an identity function.  More on this [below](#PAGNNs-do-NOT-require-an-activation-function).</s>
 
 ### Architecture
 - PAGNNs are a stateful artificial neural network architecture that is as general as possible. It is able to operate on temporal & non-temporal datasets with no modifications to the API or architecture. It also has the capacity to significantly outperform in generalizing to both temporal & non-temporal datasets in comparison to Long-Short Term Memory networks (LSTMs) & Feed Forward Neural Networks (FFNNs) respectively.
@@ -46,14 +46,14 @@ Extracting predictions from a PAGNN: If we want our output vector `Y` to be a fe
 	- Although, this means some neurons will double as inputs & outputs. It is unknown if this is useful and is a topic of active research.  Also, depending on the topology of the adjacency matrix `W` & the chosen number of steps, the output neuron’s states may remain 0s even after a number of steps. If the `W`'s topology is [disconnected](https://www.tutorialspoint.com/connected-vs-disconnected-graphs), where some inputs are isolated from some outputs both directly and indirectly, the empty output neurons problem **will necessarily** happen. This is why training PAGNNs can be somewhat cumbersome if done naively. 
 	- Fully dense PAGNNs do not suffer from the “empty neurons” problem mentioned above, however they may contain noise/interference, again this is under active research so this is speculative.
 
-### PAGNNs do NOT require an activation function:
+### <s>PAGNNs do NOT require an activation function:
 
 - **TL;DR**: A PAGNN gets it's nonlinearity from the direct & indirect recurrency in it's topology. This means that **PAGNNs have the capacity to learn their own "activation function" (non-linearities)**. Recurrency = chance to multiply an input (or partial input) by itself more than k=0 times (X<sup>k+1</sup>), which means we can approximate polynomials of an arbitrary degree & arbitrary dimensionality.
 - The extent to which PAGNNs are trainable without an activation function is currently unknown. Early experiments show that using an activation function like ReLU applied to the state matrix after each step (<code>s<sub>t+1</sub> =  σ(s<sub>t</sub>W + b), where σ(...) is a nonlinear activation function</code>) can boost convergence time and reduce exploding gradients/state values, however we may be able to alleviate this with more intelligent topology pruning & weight initialization.
  - Normal FFNNs without an activation function can only perform linear regression. Analyzing the formal math equation for the input layer of a neural network without a nonlinearity, it becomes apparent why: <code>Z<sub>0</sub> = W<sub>0</sub><sup>T</sup>X + b<sub>0</sub></code> -- All that is happening here is some multiplies and some additions. It is a linear transformation of `X` parameterized by <code>W<sub>0</sub></code> & <code>b<sub>0</sub></code>. If this has 2 layers with no activation, the second layer’s math equation is as follows: <code>Z<sub>1</sub> = W<sub>1</sub><sup>T</sup>Z<sub>0</sub> + b<sub>1</sub></code>. So, our data has gone through 2 successive linear transformations parameterized by <code>W<sub>0-1</sub></code> & <code>b<sub>0-1</sub></code>. This is strictly linear.
 - PAGNNs on the other hand are a parameterized recursive function with only 1 weight “layer”: <code>s<sub>t+1</sub> =  s<sub>t</sub>W + b</code>, where `W` is a square adjacency matrix -- this has the potential to be nonlinear, however it depends on a couple factors:
 	1. For our initial state <code>s<sub>0</sub></code> we would need to make more than 1 step. A step is defined as a single call of this recursive function.
-	2. The topology of the `W` adjacency matrix has to contain node recurrency either directly or indirectly. If the recurrency is indirect, this may require a number of steps greater than what we would expect for a complete graph topology.
+	2. The topology of the `W` adjacency matrix has to contain node recurrency either directly or indirectly. If the recurrency is indirect, this may require a number of steps greater than what we would expect for a complete graph topology.</s>
 
 ### Training PAGNNs:
 
