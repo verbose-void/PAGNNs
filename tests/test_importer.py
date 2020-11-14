@@ -4,7 +4,7 @@ import numpy as np
 from torch.nn import Sequential, Linear, ReLU
 import torch.nn.functional as F
 
-from pagnn.utils.importer import import_ffnn, count_neurons
+from pagnn.pagnn import import_ffnn, count_neurons
 
 
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
