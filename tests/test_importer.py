@@ -61,7 +61,7 @@ def test_import_linear_regression():
     X = torch.rand((50, 1)) * 100
 
     net = Sequential(
-        Linear(1, 1, bias=False),
+        Linear(1, 1, bias=True),
     )
 
     assert_import_equivalence(net, X)
@@ -70,22 +70,22 @@ def test_import_2layer():
     X = torch.rand((50, 1)) * 100
 
     net = Sequential(
-        Linear(1, 2, bias=False),
+        Linear(1, 2, bias=True),
         ReLU(),
-        Linear(2, 1, bias=False),
+        Linear(2, 1, bias=True),
     )
 
     assert_import_equivalence(net, X)
 
-def test_import_10layer():
+def test_import_3layer():
     X = torch.rand((50, 1)) * 100
 
     net = Sequential(
-        Linear(1, 10, bias=False),
+        Linear(1, 10, bias=True),
         ReLU(),
-        Linear(10, 15, bias=False),
+        Linear(10, 15, bias=False), # this layer does not have a bias term, tests dynamic bias allocation
         ReLU(),
-        Linear(15, 5, bias=False),
+        Linear(15, 5, bias=True),
     )
 
     assert_import_equivalence(net, X)
