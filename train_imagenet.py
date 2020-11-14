@@ -191,7 +191,7 @@ def main_worker(gpu, ngpus_per_node, args):
     # create model
     if args.arch.lower().startswith('p_'):
         print('=> using a P-ResNet (integrated PAGNN into ResNet)')
-        model = p_resnet.__dict__[args.arch](pretrained=False)
+        model = p_resnet.__dict__[args.arch](pretrained=args.pretrained)
     elif args.pretrained:
         print("=> using pre-trained model '{}'".format(args.arch))
         model = models.__dict__[args.arch](pretrained=True)
