@@ -58,18 +58,18 @@ def assert_import_equivalence(net, X):
 
 
 def test_import_linear_regression():
-    X = torch.rand((50, 1))
+    X = torch.rand((50, 1)) * 100
 
     net = Sequential(
-        Linear(1, 1),
+        Linear(1, 1, bias=False),
     )
 
     assert_import_equivalence(net, X)
 
-"""
 def test_import_3layer():
-    X = torch.rand((50, 1))
+    X = torch.rand((50, 1)) * 100
 
+    """
     net = Sequential(
         Linear(1, 5),
         ReLU(),
@@ -77,6 +77,11 @@ def test_import_3layer():
         ReLU(),
         Linear(5, 1)
     )
+    """
+    net = Sequential(
+        Linear(1, 2, bias=False),
+        ReLU(),
+        Linear(2, 1, bias=False),
+    )
 
     assert_import_equivalence(net, X)
-"""
