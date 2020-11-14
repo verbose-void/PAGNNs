@@ -6,6 +6,8 @@ def get_linear_layers(net):
     for child in net.children():
         if type(child) == torch.nn.Linear:
             linear_layers.append(child)
+    if len(linear_layers) <= 0:
+        linear_layers = [net]
     return linear_layers
 
 
@@ -14,10 +16,7 @@ def count_neurons(net, return_layers=False):
     extra = 0
     last = 0
     layers = 0
-    linear_layer_list = get_linear_layers(net)
-    if len(linear_layer_list) <= 0:
-        linear_layer_list = [net]
-    for layer in linear_layer_list:
+    for layer in get_linear_layers(net):
         layers += 1
         in_neurons = layer.in_features
         if first is None:
@@ -198,9 +197,12 @@ class PAGNNLayer(torch.nn.Module):
         else:
             W, b = tensors
             net = torch.nn.Linear(W.shape[1], W.shape[0])
+            net.weight.data = W
+            net.bias.data = b
             new_pagnn = import_ffnn(net, None)
             self.weight.data = new_pagnn.weight.data
             self.bias.data = new_pagnn.bias.data
+
 
     def extra_repr(self):
         return 'input_neurons=%i, output_neurons=%i, extra_neurons=%i' % (self._input_neurons, self._output_neurons, self._extra_neurons)
