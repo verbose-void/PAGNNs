@@ -1,10 +1,12 @@
 import torch
+from torchvision import transforms
 import numpy as np
 import os
 import wget
 import errno
 # import cv2
 import imageio
+from pagnn.p_resnet import p_resnet50
 
 
 class SpeedChallenge(torch.utils.data.Dataset):
@@ -18,10 +20,11 @@ class SpeedChallenge(torch.utils.data.Dataset):
     training_file = 'speed_challenge_train.pt'
     test_file = 'speed_challenge_test.pt'
 
-    def __init__(self, root, train=True, download=True):
+    def __init__(self, root, train=True, download=True, transform=None):
         self.root = root
         self.is_train = train
         self.reader = None
+        self.transform = transform
         
         if download:
             self.download()
@@ -82,11 +85,24 @@ class SpeedChallenge(torch.utils.data.Dataset):
         if not self.is_train:
             raise NotImplemented()
 
-        return torch.tensor(self.reader.get_data(index)), self.labels[index]
+        sample = self.reader.get_data(index)
+        if self.transform is not None:
+            sample = self.transform(sample)
+
+        return sample, self.labels[index]
             
 
 if __name__ == '__main__':
-    train_set = SpeedChallenge('datasets/speed_challenge')
+
+    epochs = 1
+
+    tfs = transforms.Compose([
+        transforms.ToPILImage(),
+        transforms.Resize(64),
+        transforms.ToTensor(),
+    ])
+
+    train_set = SpeedChallenge('datasets/speed_challenge', transform=tfs)
     train_loader = torch.utils.data.DataLoader(train_set, batch_size=2)
     criterion = torch.nn.functional.mse_loss
 
@@ -94,14 +110,21 @@ if __name__ == '__main__':
     min_speed = torch.min(train_set.labels)
     print('max speed', max_speed, 'min speed', min_speed)
 
+    # pagnn = PAGNNLayer(
+    model = p_resnet50(num_classes=1, retain_state=True)
+
     def random_guess():
         return torch.tensor(np.random.uniform(size=T.shape, low=min_speed, high=max_speed))
-        
 
     total_loss = 0
-    for X, T in train_loader:
-        Y = random_guess()
-        loss = criterion(Y, T)
-        total_loss += loss
+    for epoch in range(epochs):
+        for X, T in train_loader:
+            print(X.shape, T.shape)
+            # Y = random_guess()
+            Y = model(X)
+            print(Y.shape)
+            exit()
+            loss = criterion(Y, T)
+            total_loss += loss
 
     print('average loss', total_loss / len(train_loader))
