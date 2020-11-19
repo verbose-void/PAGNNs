@@ -161,6 +161,8 @@ class ResNet(nn.Module):
         retain_state: bool = False,
         sequence_inputs: bool = False,
         pagnn_activation = None,
+        pagnn_extra_neurons: int = 0,
+        pagnn_steps: int = 1,
     ) -> None:
         super(ResNet, self).__init__()
         if norm_layer is None:
@@ -193,7 +195,7 @@ class ResNet(nn.Module):
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
 
         if use_pagnn:
-            self.fc = PAGNNLayer(512 * block.expansion, num_classes, 0, retain_state=retain_state, sequence_inputs=sequence_inputs, activation=pagnn_activation)
+            self.fc = PAGNNLayer(512 * block.expansion, num_classes, pagnn_extra_neurons, retain_state=retain_state, sequence_inputs=sequence_inputs, activation=pagnn_activation, steps=pagnn_steps)
         else:
             self.fc = nn.Linear(512 * block.expansion, num_classes)
 
