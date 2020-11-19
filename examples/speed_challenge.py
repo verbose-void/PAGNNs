@@ -7,7 +7,8 @@ import errno
 # import cv2
 import tqdm
 import imageio
-from pagnn.p_resnet import p_resnet50
+import argparse
+from pagnn import p_resnet
 
 
 class SpeedChallenge(torch.utils.data.Dataset):
@@ -21,9 +22,10 @@ class SpeedChallenge(torch.utils.data.Dataset):
     training_file = 'speed_challenge_train.pt'
     test_file = 'speed_challenge_test.pt'
 
-    def __init__(self, root, train=True, download=True, transform=None):
+    def __init__(self, root, train=True, split=0.8, download=True, transform=None):
         self.root = root
         self.is_train = train
+        self.split = split
         self.reader = None
         self.transform = transform
         
@@ -37,6 +39,12 @@ class SpeedChallenge(torch.utils.data.Dataset):
         self.labels = torch.zeros(len(speeds), dtype=torch.float32)
         for i, speed in enumerate(speeds):
             self.labels[i] = float(speed.replace('\n', ''))
+
+        N_training = int(self.split*len(self.labels))
+        if self.is_train:
+            self.labels = self.labels[:N_training]
+        else:
+            self.labels = self.labels[N_training:]
 
         """
         print('counting frames...')
@@ -83,9 +91,6 @@ class SpeedChallenge(torch.utils.data.Dataset):
 
 
     def __getitem__(self, index):
-        if not self.is_train:
-            raise NotImplemented()
-
         sample = self.reader.get_data(index)
         if self.transform is not None:
             sample = self.transform(sample)
@@ -94,17 +99,32 @@ class SpeedChallenge(torch.utils.data.Dataset):
             
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Comma AI Speed Challenge')
+    parser.add_argument('--arch', default='p_resnet50', type=str, help='architecture (ex. p_resnet50)')
+    parser.add_argument('--epochs', default=10, type=int, help='number of training epochs')
+    parser.add_argument('--image-resize', default=128, type=int, help='number passed into the Resize transform')
+    parser.add_argument('--lr', default=0.00001, type=float, help='learning rate for SGD')
+    parser.add_argument('--batch-size', default=256, type=int, help='training batch size')
+    parser.add_argument('--eval-batch-size', default=256, type=int, help='eval batch size')
+    parser.add_argument('--pagnn-extra-neurons', default=300, type=int, help='number of extra neurons to allocate for PAGNNs')
+    parser.add_argument('--pagnn-steps', default=3, type=int, help='number of steps for PAGNN to take every sequence input')
+    parser.add_argument('--tqdm', action='store_true', help='use tqdm for loops')
+    parser.add_argument('--print-freq', default=5, type=int, help='frequency to print')
 
-    epochs = 1
+    args = parser.parse_args()
+    print(args)
+    print()
 
     tfs = transforms.Compose([
         transforms.ToPILImage(),
-        transforms.Resize(64),
+        transforms.Resize(args.image_resize),
         transforms.ToTensor(),
     ])
 
-    train_set = SpeedChallenge('datasets/speed_challenge', transform=tfs)
-    train_loader = torch.utils.data.DataLoader(train_set, batch_size=256)
+    train_set = SpeedChallenge('datasets/speed_challenge', transform=tfs, train=True)
+    test_set = SpeedChallenge('datasets/speed_challenge', transform=tfs, train=False)
+    train_loader = torch.utils.data.DataLoader(train_set, batch_size=args.batch_size)
+    test_loader = torch.utils.data.DataLoader(test_set, batch_size=args.eval_batch_size)
     criterion = torch.nn.functional.mse_loss
 
     max_speed = torch.max(train_set.labels)
@@ -112,25 +132,57 @@ if __name__ == '__main__':
     print('max speed', max_speed, 'min speed', min_speed)
 
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-    model = p_resnet50(num_classes=1, retain_state=True, sequence_inputs=True, pagnn_activation=torch.nn.functional.relu).to(device)
+    model = p_resnet.__dict__[args.arch](num_classes=1, retain_state=True, sequence_inputs=True, pagnn_activation=torch.nn.functional.relu, pagnn_extra_neurons=args.pagnn_extra_neurons, pagnn_steps=args.pagnn_steps).to(device)
+    optimizer = torch.optim.SGD(model.parameters(), lr=args.lr)
 
     def random_guess():
         return torch.tensor(np.random.uniform(size=T.shape, low=min_speed, high=max_speed))
 
+    def train():
+        total_loss = 0
+        model.train()
+        for i, (X, T) in tqdm.tqdm(enumerate(train_loader), total=len(train_loader), disable=not args.tqdm):
+            X, T = X.to(device), T.to(device)
+
+            optimizer.zero_grad()
+
+            Y = model(X)
+            assert Y.shape == T.shape
+
+            loss = criterion(Y, T)
+            loss.backward()
+            optimizer.step()
+
+            if (i+1) % args.print_freq  == 0:
+                print('[TRAIN %i/%i] loss: %f' % (i, len(train_loader), total_loss / i))
+
+            total_loss += loss.item()
+        avg_loss = total_loss / len(train_loader)
+        # print('[TRAIN Epoch %i] average loss' % epoch, avg_loss)
+        return avg_loss
+        
+
+    @torch.no_grad()
     def evaluate():
         total_loss = 0
         model.eval()
         with torch.no_grad():
-            for X, T in tqdm.tqdm(train_loader, total=len(train_loader)):
+            for i, (X, T) in tqdm.tqdm(enumerate(test_loader), total=len(test_loader), disable=not args.tqdm):
                 X, T = X.to(device), T.to(device)
                 # Y = random_guess()
                 Y = model(X)
+                assert Y.shape == T.shape
                 loss = criterion(Y, T)
                 total_loss += loss
-        avg_loss = (total_loss / len(train_loader)).item()
-        print('[EPOCH %i] average loss' % epoch, avg_loss)
+                if (i+1) % args.print_freq  == 0:
+                    print('[EVAL %i/%i] loss: %f' % (i, len(test_loader), total_loss.item() / i))
+        avg_loss = (total_loss / len(test_loader)).item()
+        # print('[EVAL Epoch %i] average loss' % epoch, avg_loss)
         return avg_loss
 
-    for epoch in range(epochs):
-        evaluate()
+    for epoch in range(args.epochs):
+        train_loss = train()
+        eval_loss = evaluate()
+        print('epoch\ttrain loss\teval loss')
+        print('%i\t%f\t%f' % (epoch, train_loss, eval_loss))
 
