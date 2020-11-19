@@ -243,6 +243,13 @@ class ResNet(nn.Module):
 
     def _forward_impl(self, x: Tensor) -> Tensor:
         # See note [TorchScript super()]
+        update_view = False
+        if len(x.shape) > 4:
+            update_view = True
+            pagnn_batch_size = x.shape[0]
+            pagnn_seq_length = x.shape[1]
+            x = x.view((-1, *x.shape[2:]))
+
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -255,6 +262,9 @@ class ResNet(nn.Module):
 
         x = self.avgpool(x)
         x = torch.flatten(x, 1)
+
+        if update_view:
+            x = x.view(pagnn_batch_size, pagnn_seq_length, -1)
         x = self.fc(x)
 
         return x
