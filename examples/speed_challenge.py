@@ -5,6 +5,7 @@ import os
 import wget
 import errno
 # import cv2
+import tqdm
 import imageio
 from pagnn.p_resnet import p_resnet50
 
@@ -103,28 +104,33 @@ if __name__ == '__main__':
     ])
 
     train_set = SpeedChallenge('datasets/speed_challenge', transform=tfs)
-    train_loader = torch.utils.data.DataLoader(train_set, batch_size=2)
+    train_loader = torch.utils.data.DataLoader(train_set, batch_size=256)
     criterion = torch.nn.functional.mse_loss
 
     max_speed = torch.max(train_set.labels)
     min_speed = torch.min(train_set.labels)
     print('max speed', max_speed, 'min speed', min_speed)
 
-    # pagnn = PAGNNLayer(
-    model = p_resnet50(num_classes=1, retain_state=True)
+    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+    model = p_resnet50(num_classes=1, retain_state=True, sequence_inputs=True, pagnn_activation=torch.nn.functional.relu).to(device)
 
     def random_guess():
         return torch.tensor(np.random.uniform(size=T.shape, low=min_speed, high=max_speed))
 
-    total_loss = 0
-    for epoch in range(epochs):
-        for X, T in train_loader:
-            print(X.shape, T.shape)
-            # Y = random_guess()
-            Y = model(X)
-            print(Y.shape)
-            exit()
-            loss = criterion(Y, T)
-            total_loss += loss
+    def evaluate():
+        total_loss = 0
+        model.eval()
+        with torch.no_grad():
+            for X, T in tqdm.tqdm(train_loader, total=len(train_loader)):
+                X, T = X.to(device), T.to(device)
+                # Y = random_guess()
+                Y = model(X)
+                loss = criterion(Y, T)
+                total_loss += loss
+        avg_loss = (total_loss / len(train_loader)).item()
+        print('[EPOCH %i] average loss' % epoch, avg_loss)
+        return avg_loss
 
-    print('average loss', total_loss / len(train_loader))
+    for epoch in range(epochs):
+        evaluate()
+

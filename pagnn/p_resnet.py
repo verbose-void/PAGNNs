@@ -158,7 +158,9 @@ class ResNet(nn.Module):
         replace_stride_with_dilation: Optional[List[bool]] = None,
         norm_layer: Optional[Callable[..., nn.Module]] = None,
         use_pagnn: bool = True,
-        retain_state: bool = False
+        retain_state: bool = False,
+        sequence_inputs: bool = False,
+        pagnn_activation = None,
     ) -> None:
         super(ResNet, self).__init__()
         if norm_layer is None:
@@ -191,7 +193,7 @@ class ResNet(nn.Module):
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
 
         if use_pagnn:
-            self.fc = PAGNNLayer(512 * block.expansion, num_classes, 0, retain_state=retain_state)
+            self.fc = PAGNNLayer(512 * block.expansion, num_classes, 0, retain_state=retain_state, sequence_inputs=sequence_inputs, activation=pagnn_activation)
         else:
             self.fc = nn.Linear(512 * block.expansion, num_classes)
 
