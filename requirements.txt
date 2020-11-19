@@ -10,3 +10,4 @@ nltk
 matplotlib
 sklearn
 rigl-torch
+imageio-ffmpeg
