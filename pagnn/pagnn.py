@@ -148,9 +148,15 @@ class PAGNNLayer(torch.nn.Module):
             if len(x) <= 1:
                 raise Exception('using sequence inputs but only passed a seq of size 1')
 
+            self.reset_state(self._total_neurons)
+
+            seq_output = torch.zeros(x.shape[0], device=self.weight.device)
             for idx, sample in enumerate(x):
                 self.load_input_neurons(sample)
                 self.step(n=self._steps)
+                seq_output[idx] = self.extract_output_neurons_data()
+
+            return seq_output
     
         else:
             self.load_input_neurons(x)
