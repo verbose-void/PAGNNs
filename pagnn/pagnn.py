@@ -108,8 +108,8 @@ class PAGNNLayer(torch.nn.Module):
         self.activation = activation
         torch.nn.init.kaiming_uniform_(self.weight, mode='fan_in')
 
-        if retain_state:
-            self.reset_state(self._total_neurons)
+        # if retain_state:
+            # self.reset_state(self._total_neurons)
 
     @torch.no_grad()
     def zero_params(self):
@@ -154,13 +154,13 @@ class PAGNNLayer(torch.nn.Module):
 
         if len(x.shape) == 1:
             assert x.shape[0] == self._input_neurons
-            if not retain_state:
+            if not retain_state or self.state is None:
                 self.reset_state(self._total_neurons)
             self.state[:self._input_neurons] = x
 
         elif len(x.shape) == 2:
             assert x.shape[1] == self._input_neurons
-            if not retain_state:
+            if not retain_state or self.state is None:
                 self.reset_state((x.shape[0], self._total_neurons))
             self.state[:, :self._input_neurons] = x
 
