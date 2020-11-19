@@ -77,7 +77,7 @@ def _pagnn_op(state, weight, bias=None):
 
 
 class PAGNNLayer(torch.nn.Module):
-    def __init__(self, input_neurons, output_neurons, extra_neurons, steps=1, sparsity=0, retain_state=True, activation=None):
+    def __init__(self, input_neurons, output_neurons, extra_neurons, steps=1, sparsity=0, retain_state=True, activation=None, sequence_inputs=False):
         super(PAGNNLayer, self).__init__()
 
         assert input_neurons > 0 
@@ -95,6 +95,7 @@ class PAGNNLayer(torch.nn.Module):
         self._extra_neurons = extra_neurons
         self._sparsity = sparsity
         self._retain_state = retain_state
+        self._sequence_inputs = sequence_inputs
         self._steps = steps
 
         if activation is None:
@@ -143,10 +144,18 @@ class PAGNNLayer(torch.nn.Module):
                 self.load_input_neurons(sample, force_retain_state=idx != 0)
                 self.step(n=self._steps)
 
+        elif self._sequence_inputs:
+            if len(x) <= 1:
+                raise Exception('using sequence inputs but only passed a seq of size 1')
+
+            for idx, sample in enumerate(x):
+                self.load_input_neurons(sample)
+                self.step(n=self._steps)
+    
         else:
             self.load_input_neurons(x)
             self.step(n=self._steps)
-
+        
         return self.extract_output_neurons_data()
 
     def load_input_neurons(self, x, force_retain_state=None):
