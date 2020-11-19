@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 import os
 import wget
 import errno
@@ -85,10 +86,22 @@ class SpeedChallenge(torch.utils.data.Dataset):
             
 
 if __name__ == '__main__':
-
     train_set = SpeedChallenge('datasets/speed_challenge')
-    train_loader = torch.utils.data.DataLoader(train_set)
+    train_loader = torch.utils.data.DataLoader(train_set, batch_size=2)
+    criterion = torch.nn.functional.mse_loss
 
-    for X, label in train_loader:
-        print(X.shape, label)
-        break
+    max_speed = torch.max(train_set.labels)
+    min_speed = torch.min(train_set.labels)
+    print('max speed', max_speed, 'min speed', min_speed)
+
+    def random_guess():
+        return torch.tensor(np.random.uniform(size=T.shape, low=min_speed, high=max_speed))
+        
+
+    total_loss = 0
+    for X, T in train_loader:
+        Y = random_guess()
+        loss = criterion(Y, T)
+        total_loss += loss
+
+    print('average loss', total_loss / len(train_loader))
