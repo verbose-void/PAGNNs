@@ -133,7 +133,25 @@ class PAGNNLayer(torch.nn.Module):
             if step < n-1:
                 self.state = self.activation(self.state)
 
-    def forward(self, x):
+    def forward(self, x, sequence=False):
+        if sequence:
+            output = torch.zeros((x.shape[0], x.shape[1]), device=self.weight.device)
+
+            for batch_idx, batch in enumerate(x):
+                for idx, _ in enumerate(batch):
+                    # self.load_input_neurons(sample, force_retain_state=idx != 0)
+                    self.load_input_neurons(x[:, idx], force_retain_state=idx != 0)
+                    self.step(n=self._steps)
+                    output_neuron_data = self.extract_output_neurons_data()
+                    output[:, idx] = output_neuron_data.view(-1)
+
+            return output
+
+        else:
+            self.load_input_neurons(x)
+            self.step(n=self._steps)
+
+        """
         if len(x.shape) == 1 and x.shape[0] != self._input_neurons:
             # treat input data as a sequence
             if self._input_neurons != 1:
@@ -142,10 +160,7 @@ class PAGNNLayer(torch.nn.Module):
             for idx, sample in enumerate(x.unsqueeze(-1)):
                 self.load_input_neurons(sample, force_retain_state=idx != 0)
                 self.step(n=self._steps)
-
-        else:
-            self.load_input_neurons(x)
-            self.step(n=self._steps)
+        """
 
         return self.extract_output_neurons_data()
 
@@ -165,7 +180,7 @@ class PAGNNLayer(torch.nn.Module):
             self.state[:, :self._input_neurons] = x
 
         else:
-            raise Exception()
+            raise Exception('provided input shape: %s' % str(x.shape))
 
     def extract_output_neurons_data(self):
         if len(self.state.shape) == 1:
