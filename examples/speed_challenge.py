@@ -1,4 +1,5 @@
 import torch
+import torch.nn.functional as F
 from torchvision import transforms
 import numpy as np
 import os
@@ -8,114 +9,16 @@ import errno
 import tqdm
 import imageio
 import argparse
-from pagnn import p_resnet
 
+from pagnn import p_resnet, PAGNNLayer
 
-class SpeedChallenge(torch.utils.data.Dataset):
-    urls = [
-        'https://github.com/commaai/speedchallenge/raw/master/data/train.mp4',
-        'https://github.com/commaai/speedchallenge/raw/master/data/test.mp4',
-        'https://raw.githubusercontent.com/commaai/speedchallenge/master/data/train.txt'
-    ]
-    raw_folder = 'raw'
-    processed_folder = 'processed'
-    training_file = 'speed_challenge_train.pt'
-    test_file = 'speed_challenge_test.pt'
+from rigl_torch.RigL import RigLScheduler
 
-    def __init__(self, root, train=True, split=0.8, download=True, transform=None, sequence_length=10, sequence_start_spacing=1):
-        self.root = root
-        self.is_train = train
-        self.split = split
-        self.reader = None
-        self.sequence_length = sequence_length
-        self.sequence_start_spacing = sequence_start_spacing
-        self.transform = transform
-        
-        if download:
-            self.download()
-
-        train_path = os.path.join(self.root, self.raw_folder, 'train.mp4')
-        self.reader = imageio.get_reader(train_path,  'ffmpeg')
-        with open(os.path.join(self.root, self.raw_folder, 'train.txt'), 'r') as speeds:
-            speeds = speeds.readlines()
-        self.labels = torch.zeros(len(speeds), dtype=torch.float32)
-        for i, speed in enumerate(speeds):
-            self.labels[i] = float(speed.replace('\n', ''))
-
-        N_training = int(self.split*len(self.labels))
-        if self.is_train:
-            self.labels = self.labels[:N_training]
-        else:
-            self.labels = self.labels[N_training:]
-
-        """
-        print('counting frames...')
-        for num, _ in enumerate(self.reader):
-            pass
-
-        self.length = num + 1
-        """
-
-
-    def _check_exists(self):
-        return os.path.exists(os.path.join(self.root, self.raw_folder, 'train.mp4'))
-    
-
-    def download(self):
-        if self._check_exists():
-            return
-
-        try:
-            os.makedirs(os.path.join(self.root, self.raw_folder))
-            os.makedirs(os.path.join(self.root, self.processed_folder))
-        except OSError as e:
-            if e.errno == errno.EEXIST:
-                pass
-            else:
-                raise
-
-        for url in self.urls:
-            print('Downloading ' + url)
-            # data = urllib.request.urlopen(url)
-            filename = url.rpartition('/')[2]
-            file_path = os.path.join(self.root, self.raw_folder, filename)
-            if not os.path.exists(file_path):
-            # with open(file_path, 'wb') as f:
-            #     f.write(data.read())
-            # with open(file_path.replace('.gz', ''), 'wb') as out_f, \
-            #         gzip.GzipFile(file_path) as zip_f:
-            #     out_f.write(zip_f.read())
-            # os.unlink(file_path)
-                wget.download(url, file_path)
-
-    def __len__(self):
-        return len(self.labels) // self.sequence_start_spacing - self.sequence_length
-
-
-    def __getitem__(self, index):
-        index *= self.sequence_start_spacing
-
-        sample1 = self.reader.get_data(index)
-        out_labels = torch.zeros(self.sequence_length)
-        out_labels[0] = self.labels[index]
-        if self.transform is not None:
-            sample1 = self.transform(sample1)
-        out = torch.zeros((self.sequence_length, *sample1.shape))
-        out[0] = sample1
-
-        for sample_n in range(1, self.sequence_length):
-            sample = self.reader.get_data(index + sample_n)
-            if self.transform is not None:
-                sample = self.transform(sample)
-            out[sample_n] = sample
-            out_labels[sample_n] = self.labels[index+sample_n]
-
-        return out, out_labels
-            
+from examples.speed_challenge_utils import SpeedChallenge, PConv
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Comma AI Speed Challenge')
-    parser.add_argument('--arch', default='p_resnet50', type=str, help='architecture (ex. p_resnet50)')
+    # parser.add_argument('--arch', default='p_resnet50', type=str, help='architecture (ex. p_resnet50)')
     parser.add_argument('--epochs', default=10, type=int, help='number of training epochs')
     parser.add_argument('--sequence-length', default=10, type=int, help='number of reference frames for a given sample')
     parser.add_argument('--sequence-spacing', default=1, type=int, help='number to space the start of sequences by')
@@ -128,6 +31,10 @@ if __name__ == '__main__':
     parser.add_argument('--tqdm', action='store_true', help='use tqdm for loops')
     parser.add_argument('--print-freq', default=5, type=int, help='frequency to print')
 
+    """ pruning args """
+    parser.add_argument('--dense-allocation', default=None, type=float, help='dense allocation for RigL')
+    parser.add_argument('--delta', default=20, type=int, help='rigl delta param')
+
     args = parser.parse_args()
     print(args)
     print()
@@ -138,10 +45,13 @@ if __name__ == '__main__':
         transforms.ToTensor(),
     ])
 
-    train_set = SpeedChallenge('datasets/speed_challenge', transform=tfs, train=True, sequence_length=args.sequence_length, sequence_start_spacing=args.sequence_spacing)
-    test_set = SpeedChallenge('datasets/speed_challenge', transform=tfs, train=False, sequence_length=args.sequence_length, sequence_start_spacing=args.sequence_spacing)
+    train_set = SpeedChallenge('datasets/speed_challenge', transform=tfs, set_type='train', sequence_length=args.sequence_length, sequence_start_spacing=args.sequence_spacing)
+    eval_set = SpeedChallenge('datasets/speed_challenge', transform=tfs, set_type='eval', sequence_length=args.sequence_length, sequence_start_spacing=args.sequence_spacing)
+    test_set = SpeedChallenge('datasets/speed_challenge', transform=tfs, set_type='test', sequence_length=args.sequence_length, sequence_start_spacing=args.sequence_spacing)
+
     train_loader = torch.utils.data.DataLoader(train_set, batch_size=args.batch_size, num_workers=args.workers, shuffle=True)
-    test_loader = torch.utils.data.DataLoader(test_set, batch_size=args.batch_size, num_workers=args.workers, shuffle=True)
+    eval_loader = torch.utils.data.DataLoader(eval_set, batch_size=args.batch_size, num_workers=args.workers, shuffle=False)
+    test_loader = torch.utils.data.DataLoader(test_set, batch_size=args.batch_size, num_workers=args.workers, shuffle=False)
     criterion = torch.nn.functional.mse_loss
 
     max_speed = torch.max(train_set.labels)
@@ -149,11 +59,17 @@ if __name__ == '__main__':
     print('max speed', max_speed, 'min speed', min_speed)
 
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-    model = p_resnet.__dict__[args.arch](num_classes=1, retain_state=True, sequence_inputs=True, pagnn_activation=torch.nn.functional.relu, pagnn_extra_neurons=args.pagnn_extra_neurons, pagnn_steps=args.pagnn_steps).to(device)
+    # model = p_resnet.__dict__[args.arch](num_classes=1, retain_state=True, sequence_inputs=True, pagnn_activation=torch.nn.functional.relu, pagnn_extra_neurons=args.pagnn_extra_neurons, pagnn_steps=args.pagnn_steps).to(device)
+    model = PConv().to(device)
     optimizer = torch.optim.SGD(model.parameters(), lr=args.lr)
 
     def random_guess():
         return torch.tensor(np.random.uniform(size=T.shape, low=min_speed, high=max_speed))
+
+    pruner = lambda: True
+    if args.dense_allocation is not None:
+        T_end = int(0.75 * len(train_loader))
+        pruner = RigLScheduler(model, optimizer, dense_allocation=args.dense_allocation, T_end=T_end, delta=args.delta)
 
     def train():
         total_loss = 0
@@ -169,7 +85,9 @@ if __name__ == '__main__':
 
             loss = criterion(Y, T)
             loss.backward()
-            optimizer.step()
+        
+            if pruner():
+                optimizer.step()
 
             t.set_description('[TRAIN] loss: %f' % (total_loss/(i + 1)))
 
@@ -183,26 +101,47 @@ if __name__ == '__main__':
         
 
     @torch.no_grad()
-    def evaluate():
+    def evaluate(dataloader, save_results_file=None):
         total_loss = 0
         model.eval()
+        output_predictions = []
         with torch.no_grad():
-            for i, (X, T) in tqdm.tqdm(enumerate(test_loader), total=len(test_loader), disable=not args.tqdm):
-                X, T = X.to(device), T.to(device)
-                # Y = random_guess()
-                Y = model(X)
-                assert Y.shape == T.shape
-                loss = criterion(Y, T)
-                total_loss += loss
-                if not args.tqdm and (i+1) % args.print_freq  == 0:
-                    print('[EVAL %i/%i] loss: %f' % (i, len(test_loader), total_loss.item() / (i + 1)))
-        avg_loss = (total_loss / len(test_loader)).item()
+            for i, data in tqdm.tqdm(enumerate(dataloader), total=len(dataloader), disable=not args.tqdm):
+                if type(data) == tuple:
+                    X, T = data[0].to(device), data[1].to(device)
+                    # Y = random_guess()
+                    Y = model(X)
+                    assert Y.shape == T.shape
+                    loss = criterion(Y, T)
+                    total_loss += loss
+                    if not args.tqdm and (i+1) % args.print_freq  == 0:
+                        print('[EVAL %i/%i] loss: %f' % (i, len(dataloader), total_loss.item() / (i + 1)))
+
+                else:
+                    X = data[0].to(device)
+                    Y = model(X)
+                    output_predictions.extend(Y)
+
+        if len(output_predictions) > 0 and save_results_file is not None:
+            raise NotImplemented()
+            return
+
+        avg_loss = (total_loss / len(dataloader)).item()
         # print('[EVAL Epoch %i] average loss' % epoch, avg_loss)
         return avg_loss
 
+    """
     for epoch in range(args.epochs):
         train_loss = train()
-        eval_loss = evaluate()
+        eval_loss = evaluate(eval_loader)
         print('epoch\ttrain loss\teval loss')
         print('%i\t%f\t%f' % (epoch, train_loss, eval_loss))
+    """
+
+    # run on test data and save output
+    print('Finished training.... Running inference on output data')
+    evaluate(test_loader, save_results_file='speed-challenge-outputs.txt')
+    
+    
+
 
