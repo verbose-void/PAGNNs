@@ -134,21 +134,23 @@ class PAGNNLayer(torch.nn.Module):
             if step < n-1:
                 self.state = self.activation(self.state)
 
-    def forward(self, x):
+    def forward(self, x, force_no_reset=False):
         if len(x.shape) == 1 and x.shape[0] != self._input_neurons:
             # treat input data as a sequence
             if self._input_neurons != 1:
                 raise NotImplemented('TODO')
 
             for idx, sample in enumerate(x.unsqueeze(-1)):
-                self.load_input_neurons(sample, force_retain_state=idx != 0)
+                self.load_input_neurons(sample, force_retain_state=(force_no_reset or idx != 0))
                 self.step(n=self._steps)
 
         elif self._sequence_inputs:
-            if len(x) <= 1:
-                raise Exception('using sequence inputs but only passed a seq of size 1')
+            # if len(x) <= 1:
+                # print(x.shape)
+                # raise Exception('using sequence inputs but only passed a seq of size 1')
 
-            self.reset_state((x.shape[0], self._total_neurons))
+            if not force_no_reset:
+                self.reset_state((x.shape[0], self._total_neurons))
 
             seq_output = torch.zeros((x.shape[0], x.shape[1]), device=self.weight.device)
             # for idx, sample in enumerate(x):
@@ -169,13 +171,13 @@ class PAGNNLayer(torch.nn.Module):
         retain_state = self._retain_state if force_retain_state is None else force_retain_state
 
         if len(x.shape) == 1:
-            assert x.shape[0] == self._input_neurons
+            assert x.shape[0] == self._input_neurons, x.shape
             if not retain_state or self.state is None:
                 self.reset_state(self._total_neurons)
             self.state[:self._input_neurons] = x
 
         elif len(x.shape) == 2:
-            assert x.shape[1] == self._input_neurons
+            assert x.shape[1] == self._input_neurons, (x.shape[1], self._input_neurons)
             if not retain_state or self.state is None:
                 self.reset_state((x.shape[0], self._total_neurons))
             self.state[:, :self._input_neurons] = x
