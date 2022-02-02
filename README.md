@@ -14,7 +14,7 @@
 - `σ(...)` is an activation function.
 
 ### Architecture
-- PAGNNs are a stateful artificial neural network architecture that is as general as possible. It is able to operate on temporal & non-temporal datasets with no modifications to the API or architecture. It also has the capacity to significantly outperform in generalizing to both temporal & non-temporal datasets in comparison to Long-Short Term Memory networks (LSTMs) & Feed Forward Neural Networks (FFNNs) respectively.
+- PAGNNs are a stateful artificial neural network architecture that is as general as possible. It is able to operate on temporal & non-temporal datasets with no modifications to the API or architecture.
 
 - They also have a general topology, represented by square [adjacency matrices]([https://en.wikipedia.org/wiki/Adjacency_matrix](https://en.wikipedia.org/wiki/Adjacency_matrix)):
 	- The architecture itself makes no assumptions about the topology other than the TOTAL number of neurons. In FFNNs, tons of assumptions are heuristically made about the topology beyond the neuron count including: number of layers, number of neurons per layer, density per layer, and the directionality of dataflow.
