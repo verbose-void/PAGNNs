@@ -10,7 +10,7 @@
 <code>s<sub>t+1</sub> =  σ(s<sub>t</sub>W + b)</code>, where:
 - `W` is a square [adjacency matrix](https://en.wikipedia.org/wiki/Adjacency_matrix) of shape `NxN`.
 - <code>s<sub>t</sub></code> is a row vector of shape `1xN`.
-- And `N` is the total number of neurons in the network.
+- `N` is the total number of neurons in the network.
 - `σ(...)` is an activation function.
 
 ### Architecture
