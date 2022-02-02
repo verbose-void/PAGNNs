@@ -1,5 +1,7 @@
 # PAGNNs
 
+**warning: this project is heavily experimental. it's more of a research project.**
+
 # What are PAGNNs?
  
 **PAGNN** stands for **Persistent Artificial Graph-based Neural Networks**.
