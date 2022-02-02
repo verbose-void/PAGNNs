@@ -9,8 +9,7 @@
 - `W` is a square [adjacency matrix](https://en.wikipedia.org/wiki/Adjacency_matrix) of shape `NxN`.
 - <code>s<sub>t</sub></code> is a row vector of shape `1xN`.
 - And `N` is the total number of neurons in the network.
-
-<s>**A quick note:** the `σ(...)` function is NOT required to be a nonlinearity. **PAGNNs are special in that they do NOT require an activation function to generalize to nonlinear datasets**. In the case we use no nonlinearity, `σ(...)` becomes an identity function.  More on this [below](#PAGNNs-do-NOT-require-an-activation-function).</s>
+- `σ(...)` is an activation function.
 
 ### Architecture
 - PAGNNs are a stateful artificial neural network architecture that is as general as possible. It is able to operate on temporal & non-temporal datasets with no modifications to the API or architecture. It also has the capacity to significantly outperform in generalizing to both temporal & non-temporal datasets in comparison to Long-Short Term Memory networks (LSTMs) & Feed Forward Neural Networks (FFNNs) respectively.
