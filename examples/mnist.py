@@ -7,6 +7,8 @@ from pagnn.pagnn import PAGNNLayer
 from pagnn.utils.comparisons import compare, FFNN, count_params
 from pagnn.utils.visualize import draw_networkx_graph
 
+from rigl_torch.RigL import RigLScheduler
+
 
 if __name__ == '__main__':
     transform=torchvision.transforms.Compose([
@@ -38,12 +40,15 @@ if __name__ == '__main__':
     model_dicts.append(linear)
 
     configs = [
-        {'num_steps': 1, 'activation': None},
-        {'num_steps': 3, 'activation': None},
-        {'num_steps': 5, 'activation': None},
-        {'num_steps': 3, 'activation': 'relu'},
-        {'num_steps': 5, 'activation': 'relu'},
+        # {'num_steps': 1, 'activation': None},
+        # {'num_steps': 2, 'activation': None},
+        # {'num_steps': 5, 'activation': None},
+        {'num_steps': 2, 'activation': 'relu', 'dense_allocation': 0.01},
+        # {'num_steps': 5, 'activation': 'relu'},
     ]
+
+    epochs = 10
+    T_end = int(0.75 * (epochs * len(train_dl))) # for sparsity
 
     for config in configs:
         pagnn_lr = 0.001
@@ -60,11 +65,18 @@ if __name__ == '__main__':
             model_name = 'PAGNN(#p=%i, steps=%i)' % (count_params(pagnn_model), config['num_steps'])
         else:
             model_name = 'PAGNN(#p=%i, steps=%i) + %s' % (count_params(pagnn_model), config['num_steps'], config['activation'])
+
+        optimizer = torch.optim.Adam(pagnn_model.parameters(), lr=pagnn_lr)
+        pruner = None
+        if config['dense_allocation'] is not None:
+            pruner = RigLScheduler(pagnn_model, optimizer, dense_allocation=config['dense_allocation'], T_end=T_end)
+
         pagnn = {
             'name': model_name,
             'model': pagnn_model,
             # 'num_steps': config['num_steps'],
-            'optimizer': torch.optim.Adam(pagnn_model.parameters(), lr=pagnn_lr),
+            'optimizer': optimizer,
+            'pruner': pruner
         }
 
         model_dicts.append(pagnn)
@@ -84,7 +96,7 @@ if __name__ == '__main__':
     # print('ffnn num params:', sum(p.numel() for p in ffnn_model.parameters()))
 
     criterion = F.cross_entropy
-    epochs = 10
+
     compare(model_dicts, train_dl, test_dl, epochs, criterion, test_accuracy=True, device=device, flat_dim=1)
     
     fig = plt.figure(figsize=(16, 9))

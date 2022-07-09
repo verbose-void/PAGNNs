@@ -179,7 +179,7 @@ def get_args():
     parser.add_argument('--epochs', default=10, type=int, help='number of training epochs')
     parser.add_argument('--sequence-length', default=10, type=int, help='number of reference frames for a given sample')
     parser.add_argument('--sequence-spacing', default=5, type=int, help='number to space the start of sequences by')
-    parser.add_argument('--image-resize', default=128, type=int, help='number passed into the Resize transform')
+    parser.add_argument('--image-resize', default=None, type=int, help='number passed into the Resize transform')
     parser.add_argument('--lr', default=0.00001, type=float, help='learning rate for SGD')
     parser.add_argument('--workers', default=0, type=int, help='dataloader workers')
     parser.add_argument('--batch-size', default=1, type=int, help='training batch size')
@@ -199,11 +199,11 @@ def get_args():
     return args
 
 def get_loaders(args):
-    tfs = transforms.Compose([
-        transforms.ToPILImage(),
-        transforms.Resize(args.image_resize),
-        transforms.ToTensor(),
-    ])
+    raw = [transforms.ToPILImage()]
+    if args.image_resize is not None:
+        raw.append(transforms.Resize(args.image_resize))
+    raw.append(transforms.ToTensor())
+    tfs = transforms.Compose(raw)
 
     train_set = SpeedChallenge('datasets/speed_challenge', transform=tfs, set_type='train', sequence_length=args.sequence_length, \
                                sequence_start_spacing=args.sequence_spacing)
